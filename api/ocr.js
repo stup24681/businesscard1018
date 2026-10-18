@@ -17,20 +17,30 @@ export default async function handler(req, res) {
   // 1. 診斷與測試模式：直接開啟網址不僅看狀態，更直接向 Google 發送一則微型測試確保金鑰可用
   if (req.method === 'GET') {
     let testResult = '未測試';
+    let availableModels = [];
     if (apiKey) {
       try {
-        const pingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-        const testRes = await fetch(pingUrl, {
-          method: 'POST',
+        // 先測試清單端點，驗證金鑰同時獲取帳號可用的模型
+        const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+        const listRes = await fetch(listUrl, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'Hello' }] }]
-          })
+          }
         });
-        testResult = testRes.ok ? 'Google 驗證成功 (200 OK)' : `Google 回應錯誤 (${testRes.status})`;
+
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          availableModels = (listData.models || [])
+            .map(m => m.name.replace('models/', ''))
+            .filter(m => m.includes('flash') || m.includes('pro'))
+            .slice(0, 5);
+          testResult = 'Google 驗證成功 (200 OK)';
+        } else {
+          const errDetail = await listRes.text();
+          testResult = `Google 回應錯誤 (${listRes.status}): ${errDetail}`;
+        }
       } catch (err) {
         testResult = `測試請求例外: ${err.message}`;
       }
@@ -41,7 +51,8 @@ export default async function handler(req, res) {
       message: 'OCR API 端點運作正常',
       hasApiKey: !!apiKey,
       apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : '尚未設定 GEMINI_API_KEY',
-      keyVerification: testResult
+      keyVerification: testResult,
+      modelsSample: availableModels
     });
   }
 
@@ -107,23 +118,23 @@ export default async function handler(req, res) {
       }
     };
 
-    // 依序嘗試相容 AQ. 新版金鑰的模型
+    // 依序嘗試 Google 官方標準的多模態 Flash 模型
     const candidateModels = [
-      'gemini-2.5-flash',
       'gemini-1.5-flash',
-      'gemini-2.0-flash'
+      'gemini-2.0-flash',
+      'gemini-1.5-pro'
     ];
 
     let lastErrorDetail = null;
 
     for (const model of candidateModels) {
       try {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey // 同時支援新版 AQ. 與舊版 AIza 金鑰規格
+            'x-goog-api-key': apiKey // 同時提供 header 與 query string，確保 100% 相容
           },
           body: JSON.stringify(payload)
         });
@@ -138,7 +149,7 @@ export default async function handler(req, res) {
         } else {
           const errBody = await response.text();
           console.error(`Gemini API [${model}] 錯誤:`, errBody);
-          lastErrorDetail = `[${model}] ${errBody}`;
+          lastErrorDetail = `[${model} HTTP ${response.status}] ${errBody}`;
         }
       } catch (err) {
         lastErrorDetail = `[${model}] 例外: ${err.message}`;
