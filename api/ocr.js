@@ -20,18 +20,17 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ 
-      error: '伺服器端尚未設定 GEMINI_API_KEY，請至 Vercel 專案後台的 Environment Variables 中進行設定。' 
+      error: '伺服器未讀取到 GEMINI_API_KEY，請確認 Vercel 環境變數設定並重新部署 (Redeploy)。' 
     });
   }
 
   const { image } = req.body || {};
   if (!image) {
-    return res.status(400).json({ error: '未提供圖片資料' });
+    return res.status(400).json({ error: '未接收到名片圖片資料' });
   }
 
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const systemPrompt = `你是一個專業的名片識別助理。請從提供的名片圖片中精確提取四大主要資訊：
 1. company: 公司名稱
@@ -75,28 +74,42 @@ export default async function handler(req, res) {
       }
     };
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    // 支援模型自動降級嘗試：優先使用 gemini-2.5-flash，若失敗嘗試 gemini-1.5-flash
+    const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    let lastError = null;
+
+    for (const model of models) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          const resultText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (resultText) {
+            const parsed = JSON.parse(resultText);
+            return res.status(200).json(parsed);
+          }
+        } else {
+          const errText = await response.text();
+          console.error(`Gemini API [${model}] error:`, errText);
+          lastError = errText;
+        }
+      } catch (callErr) {
+        lastError = callErr.message;
+      }
+    }
+
+    return res.status(502).json({ 
+      error: 'Gemini API 辨識請求失敗', 
+      details: lastError 
     });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      return res.status(response.status).json({ error: 'Gemini API 辨識請求失敗', details: errText });
-    }
-
-    const resData = await response.json();
-    const resultText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) {
-      return res.status(500).json({ error: '未能取得辨識結果' });
-    }
-
-    const parsed = JSON.parse(resultText);
-    return res.status(200).json(parsed);
   } catch (error) {
-    console.error('Server OCR error:', error);
+    console.error('Server OCR handler error:', error);
     return res.status(500).json({ error: error.message || '辨識過程發生內部錯誤' });
   }
 }
