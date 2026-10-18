@@ -2,16 +2,38 @@
 
 智慧虛擬名片夾是一個支援手機與電腦瀏覽器的全功能數位名片管理系統。具備四大核心資訊辨識、Google 地圖導航串接、Excel 匯出及 Gmail 批次客製化與 BCC 群發功能。
 
-## 核心功能特色
-1. **四大核心欄位**：公司名稱、姓名、公司地點（點擊開 Google 地圖）、電子信箱（點擊撰寫郵件）。
-2. **AI 名片辨識**：支援相機拍照或相簿單張/批量（上限 10 張）匯入，嚴格遵循不臆測原則。
-3. **Gmail 批次發送**：
-   - **一鍵 BCC 密件群發**：一鍵群發（無法客製化），所有收件人同時收到且互不見信箱，只需在 Gmail 點一次傳送最省時。
-   - **客製化信件**：支援帶入 `{姓名}` 與 `{公司}`，依序快速開窗發送。
-4. **多帳號資料隔離**：支援多人共用同一個網址，各自獨立保管名片資料。
-5. **Excel 匯出**：一鍵匯出選取或全部名片為 `.xlsx` 試算表。
+## 🌟 核心特色：全體使用者零設定直接使用 AI
+本專案已建置 Vercel Serverless Function 後端代理 (`/api/ocr`)。
+**任何使用者打開網站連結，都不需要輸入 API Key，即可直接使用拍照上傳與批量（上限 10 張）AI 辨識功能！**
 
-## 部署與更新說明
-- 本專案已針對 **GitHub + Vercel** 進行最佳化。
-- 每次將更新推送到 GitHub 的 `main` 分支後，Vercel 將自動在 15 秒內完成重新部署。
-- 部署至專屬網域後，網址永久固定，名片資料永久保存不遺失！
+---
+
+## 🔑 如何在 Vercel 設定唯一的 GEMINI_API_KEY（只需管理者設定一次）
+
+1. **取得免費的 Google Gemini API Key**：
+   - 前往 [Google AI Studio](https://aistudio.google.com/app/apikey)。
+   - 點擊「Create API Key」，複製您的專屬金鑰。
+
+2. **登入 Vercel 設定環境變數**：
+   - 進入 [Vercel Dashboard](https://vercel.com/dashboard)。
+   - 點擊您的名片夾專案（例如 `card-vault`）。
+   - 點擊上方的 **Settings**（設定）分頁。
+   - 點選左側選單的 **Environment Variables**（環境變數）。
+   - 在表單中填入：
+     - **Key**：`GEMINI_API_KEY`
+     - **Value**：貼上您在步驟 1 取得的 Gemini API Key。
+     - **Environments**：勾選 `Production`、`Preview`、`Development` 全部。
+   - 點擊 **Save**。
+
+3. **重新部署（Redeploy）生效**：
+   - 到專案的 **Deployments** 頁面。
+   - 點擊最新一筆部署右側的三個點（`...`），選擇 **Redeploy**。
+   - 完成後，所有打開連結的使用者便能全自動享受 AI 名片辨識！
+
+---
+
+## 專案檔案結構
+- `index.html`：前端介面、多帳號管理、Gmail 發信與 Excel 匯出。
+- `api/ocr.js`：Vercel Serverless 後端代理，保護金鑰安全並執行 AI 名片辨識。
+- `vercel.json`：路由與部署設定。
+- `README.md`：說明手冊與設定指引。
