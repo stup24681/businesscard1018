@@ -1134,6 +1134,11 @@
       progressBox.classList.remove('hidden');
       saveBtn.disabled = true;
 
+      const activeKey = getActiveApiKey();
+      if (!activeKey) {
+        window.showToast('尚未設定 API Key，將匯入名片圖片供手動填寫', 'error');
+      }
+
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         progressCount.textContent = `${i + 1} / ${fileList.length}`;
@@ -1142,10 +1147,12 @@
         const compressed = await compressImageFile(file);
         let ocrResult = { company: '', name: '', addresses: [], email: '' };
 
-        try {
-          ocrResult = await callGeminiOcr(compressed) || ocrResult;
-        } catch (e) {
-          console.warn("Batch OCR fallback:", e);
+        if (activeKey) {
+          try {
+            ocrResult = await callGeminiOcr(compressed, activeKey) || ocrResult;
+          } catch (e) {
+            console.warn(`第 ${i + 1} 張名片辨識警告:`, e);
+          }
         }
 
         const item = {
@@ -1163,9 +1170,9 @@
         row.innerHTML = `
           <img src="${compressed}" class="w-14 h-9 object-cover rounded-lg border border-slate-200 shrink-0">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
-            <input type="text" value="${item.company.replace(/"/g, '&quot;')}" placeholder="公司" class="batch-comp px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs">
+            <input type="text" value="${item.company.replace(/"/g, '&quot;')}" placeholder="公司名稱" class="batch-comp px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs">
             <input type="text" value="${item.name.replace(/"/g, '&quot;')}" placeholder="姓名" class="batch-name px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs">
-            <input type="text" value="${item.addresses.join('; ').replace(/"/g, '&quot;')}" placeholder="地址(以分號分隔)" class="batch-addr px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs">
+            <input type="text" value="${item.addresses.join('; ').replace(/"/g, '&quot;')}" placeholder="公司地址(分號分隔)" class="batch-addr px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs">
             <input type="text" value="${item.email.replace(/"/g, '&quot;')}" placeholder="Email" class="batch-email px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-mono">
           </div>
         `;
@@ -1173,7 +1180,7 @@
       }
 
       saveBtn.disabled = false;
-      window.showToast(`已完成 ${fileList.length} 張名片智慧辨識，可直接確認儲存！`);
+      window.showToast(`已成功處理 ${fileList.length} 張名片，確認後可一鍵儲存！`);
     }
 
     function saveAllBatchCards() {
@@ -1274,6 +1281,25 @@
       }
       closeGmailSettings();
       window.showToast(email ? `已設定寄件者：${email}` : '已清除預設寄件信箱');
+    }
+
+    function openApiKeySettings() {
+      const input = document.getElementById('geminiApiKeyInput');
+      input.value = window.CloudVault ? window.CloudVault.getApiKey() : '';
+      document.getElementById('apiKeySettingsModal').classList.remove('hidden');
+    }
+
+    function closeApiKeySettings() {
+      document.getElementById('apiKeySettingsModal').classList.add('hidden');
+    }
+
+    function saveApiKeySettings() {
+      const key = document.getElementById('geminiApiKeyInput').value.trim();
+      if (window.CloudVault) {
+        window.CloudVault.setApiKey(key);
+      }
+      closeApiKeySettings();
+      window.showToast(key ? 'Gemini API Key 已儲存，AI 辨識已啟用！' : '已清除 API Key');
     }
 
     function openBatchMailModal() {
@@ -1519,6 +1545,16 @@
       if (cancelGmailSettingsBtn) cancelGmailSettingsBtn.addEventListener('click', closeGmailSettings);
       if (saveGmailSettingsBtn) saveGmailSettingsBtn.addEventListener('click', saveGmailSettings);
 
+      const apiKeyConfigBtn = document.getElementById('apiKeyConfigBtn');
+      const closeApiKeySettingsBtn = document.getElementById('closeApiKeySettingsBtn');
+      const cancelApiKeySettingsBtn = document.getElementById('cancelApiKeySettingsBtn');
+      const saveApiKeySettingsBtn = document.getElementById('saveApiKeySettingsBtn');
+
+      if (apiKeyConfigBtn) apiKeyConfigBtn.addEventListener('click', openApiKeySettings);
+      if (closeApiKeySettingsBtn) closeApiKeySettingsBtn.addEventListener('click', closeApiKeySettings);
+      if (cancelApiKeySettingsBtn) cancelApiKeySettingsBtn.addEventListener('click', closeApiKeySettings);
+      if (saveApiKeySettingsBtn) saveApiKeySettingsBtn.addEventListener('click', saveApiKeySettings);
+
       const batchMailBtn = document.getElementById('batchMailBtn');
       const closeBatchMailModalBtn = document.getElementById('closeBatchMailModalBtn');
       const cancelBatchMailBtn = document.getElementById('cancelBatchMailBtn');
@@ -1579,7 +1615,17 @@
         addAddressFieldBtn.addEventListener('click', () => addAddressInputField('', true));
       }
 
+      // 修正：為新增名片彈窗中的相片框綁定點擊事件，點擊時觸發隱藏的 input[type="file"]
+      const frontImgBox = document.getElementById('frontImgBox');
       const frontInput = document.getElementById('frontInput');
+      if (frontImgBox && frontInput) {
+        frontImgBox.addEventListener('click', (e) => {
+          // 若點擊的是清除叉叉按鈕，不觸發選取檔案
+          if (e.target.closest('#clearFrontImg')) return;
+          frontInput.click();
+        });
+      }
+
       if (frontInput) {
         frontInput.addEventListener('change', async (e) => {
           if (e.target.files && e.target.files[0]) {
