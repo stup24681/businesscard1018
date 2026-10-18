@@ -1,4 +1,3 @@
-<!-- STREAMING_CHUNK:Allowing /api routes to reach serverless functions before fallback... -->
 {
   "version": 2,
   "cleanUrls": true,
