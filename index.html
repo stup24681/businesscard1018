@@ -175,13 +175,11 @@
       <div class="py-3 flex-1 overflow-y-auto space-y-3 custom-scrollbar text-xs">
         <div id="mailInvalidNotice" class="hidden p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs"></div>
 
-        <!-- Recipients Badges List -->
         <div>
           <label class="block font-semibold text-slate-700 mb-1">收件者清單：</label>
           <div id="mailRecipientList" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200"></div>
         </div>
 
-        <!-- Subject Input -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="font-semibold text-slate-700">信件主旨：</label>
@@ -193,7 +191,6 @@
           <input type="text" id="batchMailSubject" value="很高興認識您！- 業務合作與交流" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs focus:border-rose-500 focus:outline-hidden">
         </div>
 
-        <!-- Body Textarea -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="font-semibold text-slate-700">信件內容：</label>
@@ -210,7 +207,6 @@
 祝 順心商祺！</textarea>
         </div>
 
-        <!-- Functional Comparison Box -->
         <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-[11px] text-slate-600">
           <div class="flex items-start gap-1.5">
             <i data-lucide="info" class="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5"></i>
@@ -229,20 +225,17 @@
         </div>
       </div>
 
-      <!-- Action Buttons Footer -->
       <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2">
         <button id="cancelBatchMailBtn" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition">
           取消
         </button>
 
         <div class="flex items-center gap-2 w-full sm:w-auto">
-          <!-- Button A: One-click BCC Group Send -->
           <button id="bccGroupMailBtn" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium transition shadow-xs flex items-center justify-center gap-1.5" title="一鍵群發(無法客製化)">
             <i data-lucide="users" class="w-3.5 h-3.5"></i>
             <span>一鍵 BCC 密件群發</span>
           </button>
 
-          <!-- Button B: Personalized Customized Email -->
           <button id="startBatchSendBtn" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1.5">
             <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
             <span>客製化信件 (帶入姓名/公司)</span>
@@ -262,7 +255,6 @@
         <p class="text-xs text-slate-500" id="autoSendStatusHint">已為當前收件人帶入專屬姓名與公司資訊</p>
       </div>
 
-      <!-- Progress Bar -->
       <div class="space-y-1.5">
         <div class="flex justify-between text-xs font-medium text-slate-600">
           <span id="queueProgressText">0 / 0</span>
@@ -273,7 +265,6 @@
         </div>
       </div>
 
-      <!-- Current Recipient Card -->
       <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-1">
         <div class="text-slate-400 text-[10px]">當前發送目標：</div>
         <div class="font-bold text-slate-800 text-sm" id="queueContactName">-</div>
@@ -318,7 +309,7 @@
             <input type="file" id="frontInput" accept="image/*" class="hidden">
 
             <div class="flex-1 space-y-1 text-slate-500">
-              <p class="text-[11px] leading-relaxed">支援拍照或相簿選取。上傳後點擊「AI 辨識」，自動擷取四項核心資訊。</p>
+              <p class="text-[11px] leading-relaxed">支援手機直接拍照或選取照片。上傳後點擊「AI 辨識」，自動擷取四項核心資訊。</p>
               <button type="button" id="autoOcrBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold hover:bg-indigo-100 transition">
                 <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
                 <span id="ocrBtnText">AI 智慧辨識</span>
@@ -400,7 +391,7 @@
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <h3 class="font-bold text-slate-800 text-base">批量新增名片（上限 10 張）</h3>
-          <p class="text-[11px] text-slate-500">一次選取多張名片照片，系統將依序自動辨識四大核心資訊</p>
+          <p class="text-[11px] text-slate-500">一次選取多張名片照片，系統自動逐張辨識四大核心資訊</p>
         </div>
         <button id="closeBatchModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -411,7 +402,7 @@
         <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-6 text-center">
           <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-500 mx-auto mb-2"></i>
           <p class="font-semibold text-slate-800 mb-1">點擊選取或拖曳名片圖檔</p>
-          <p class="text-[11px] text-slate-500 mb-3">支援 JPG、PNG 格式，一次最多可處理 10 張照片</p>
+          <p class="text-[11px] text-slate-500 mb-3">支援拍照或圖檔，一次最多可處理 10 張照片</p>
           <button type="button" onclick="document.getElementById('batchFileInput').click()" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition shadow-2xs">
             選擇名片圖檔
           </button>
@@ -482,7 +473,6 @@
   <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900/90 text-white text-xs font-medium shadow-lg backdrop-blur-md transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-2"></div>
 
   <script>
-    // 永久固定 App ID 與獨立命名空間，確保部署到 Vercel/自訂網域後永不遺失
     const VAULT_STORAGE_PREFIX = 'PERMANENT_CARD_VAULT_PROD';
 
     window.CloudVault = {
@@ -540,7 +530,7 @@
         try {
           localStorage.setItem(safeKey, JSON.stringify(cardsList));
         } catch (e) {
-          console.warn("Storage full or quota error, trimming old items:", e);
+          console.warn("Storage quota full:", e);
         }
       }
     };
@@ -560,7 +550,6 @@
 
     let modalFrontImage = null;
     let batchQueue = [];
-    const apiKey = ""; // Canvas runtime / Gemini API
 
     window.insertVariable = function(field, tag) {
       const el = field === 'subject' ? document.getElementById('batchMailSubject') : document.getElementById('batchMailBody');
@@ -642,6 +631,21 @@
       container.appendChild(div);
       if (window.lucide) window.lucide.createIcons();
       if (focus) div.querySelector('.address-input').focus();
+    }
+
+    async function requestBackendOcr(base64Image) {
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status} 辨識失敗`);
+      }
+
+      return await response.json();
     }
 
     window.renderCards = function() {
@@ -1022,7 +1026,7 @@
       ocrBtnText.textContent = 'AI 辨識中...';
 
       try {
-        const result = await callGeminiOcr(modalFrontImage);
+        const result = await requestBackendOcr(modalFrontImage);
         if (result) {
           if (result.company) document.getElementById('modalCompany').value = result.company;
           if (result.name) document.getElementById('modalName').value = result.name;
@@ -1037,71 +1041,11 @@
         }
       } catch (err) {
         console.error(err);
-        window.showToast('辨識時發生問題，請手動確認填寫', 'error');
+        window.showToast(err.message || '辨識發生問題，請確認已設定 Vercel 環境變數', 'error');
       } finally {
         ocrBtn.disabled = false;
         ocrBtnText.textContent = 'AI 智慧辨識';
       }
-    }
-
-    async function callGeminiOcr(base64Image) {
-      const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-      const systemPrompt = `你是一個專業的名片識別助理。請從提供的名片圖片中精確提取四大主要資訊：
-1. company: 公司名稱
-2. name: 姓名
-3. addresses: 公司地點/完整地址（字串陣列，若有多個分公司地址請全部列出）
-4. email: E-mail 電子信箱
-
-嚴格規定：
-- 若名片中未提供或無法清晰辨識該欄位，請保留為空字串或空陣列，絕對不可以自行猜測或虛構任何資訊。`;
-
-      const payload = {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: systemPrompt },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Data
-                }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              company: { type: "STRING" },
-              name: { type: "STRING" },
-              addresses: {
-                type: "ARRAY",
-                items: { type: "STRING" }
-              },
-              email: { type: "STRING" }
-            },
-            required: ["company", "name", "addresses", "email"]
-          }
-        }
-      };
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resData = await response.json();
-      const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        return JSON.parse(text);
-      }
-      return null;
     }
 
     function openBatchModal() {
@@ -1134,11 +1078,6 @@
       progressBox.classList.remove('hidden');
       saveBtn.disabled = true;
 
-      const activeKey = getActiveApiKey();
-      if (!activeKey) {
-        window.showToast('尚未設定 API Key，將匯入名片圖片供手動填寫', 'error');
-      }
-
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         progressCount.textContent = `${i + 1} / ${fileList.length}`;
@@ -1147,12 +1086,10 @@
         const compressed = await compressImageFile(file);
         let ocrResult = { company: '', name: '', addresses: [], email: '' };
 
-        if (activeKey) {
-          try {
-            ocrResult = await callGeminiOcr(compressed, activeKey) || ocrResult;
-          } catch (e) {
-            console.warn(`第 ${i + 1} 張名片辨識警告:`, e);
-          }
+        try {
+          ocrResult = await requestBackendOcr(compressed);
+        } catch (e) {
+          console.warn(`第 ${i + 1} 張名片辨識警告:`, e);
         }
 
         const item = {
@@ -1281,25 +1218,6 @@
       }
       closeGmailSettings();
       window.showToast(email ? `已設定寄件者：${email}` : '已清除預設寄件信箱');
-    }
-
-    function openApiKeySettings() {
-      const input = document.getElementById('geminiApiKeyInput');
-      input.value = window.CloudVault ? window.CloudVault.getApiKey() : '';
-      document.getElementById('apiKeySettingsModal').classList.remove('hidden');
-    }
-
-    function closeApiKeySettings() {
-      document.getElementById('apiKeySettingsModal').classList.add('hidden');
-    }
-
-    function saveApiKeySettings() {
-      const key = document.getElementById('geminiApiKeyInput').value.trim();
-      if (window.CloudVault) {
-        window.CloudVault.setApiKey(key);
-      }
-      closeApiKeySettings();
-      window.showToast(key ? 'Gemini API Key 已儲存，AI 辨識已啟用！' : '已清除 API Key');
     }
 
     function openBatchMailModal() {
@@ -1545,16 +1463,6 @@
       if (cancelGmailSettingsBtn) cancelGmailSettingsBtn.addEventListener('click', closeGmailSettings);
       if (saveGmailSettingsBtn) saveGmailSettingsBtn.addEventListener('click', saveGmailSettings);
 
-      const apiKeyConfigBtn = document.getElementById('apiKeyConfigBtn');
-      const closeApiKeySettingsBtn = document.getElementById('closeApiKeySettingsBtn');
-      const cancelApiKeySettingsBtn = document.getElementById('cancelApiKeySettingsBtn');
-      const saveApiKeySettingsBtn = document.getElementById('saveApiKeySettingsBtn');
-
-      if (apiKeyConfigBtn) apiKeyConfigBtn.addEventListener('click', openApiKeySettings);
-      if (closeApiKeySettingsBtn) closeApiKeySettingsBtn.addEventListener('click', closeApiKeySettings);
-      if (cancelApiKeySettingsBtn) cancelApiKeySettingsBtn.addEventListener('click', closeApiKeySettings);
-      if (saveApiKeySettingsBtn) saveApiKeySettingsBtn.addEventListener('click', saveApiKeySettings);
-
       const batchMailBtn = document.getElementById('batchMailBtn');
       const closeBatchMailModalBtn = document.getElementById('closeBatchMailModalBtn');
       const cancelBatchMailBtn = document.getElementById('cancelBatchMailBtn');
@@ -1615,12 +1523,10 @@
         addAddressFieldBtn.addEventListener('click', () => addAddressInputField('', true));
       }
 
-      // 修正：為新增名片彈窗中的相片框綁定點擊事件，點擊時觸發隱藏的 input[type="file"]
       const frontImgBox = document.getElementById('frontImgBox');
       const frontInput = document.getElementById('frontInput');
       if (frontImgBox && frontInput) {
         frontImgBox.addEventListener('click', (e) => {
-          // 若點擊的是清除叉叉按鈕，不觸發選取檔案
           if (e.target.closest('#clearFrontImg')) return;
           frontInput.click();
         });
