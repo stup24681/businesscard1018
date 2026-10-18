@@ -640,12 +640,14 @@
         body: JSON.stringify({ image: base64Image })
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status} 辨識失敗`);
+        const msg = responseData.error || responseData.details || `HTTP ${response.status} 辨識失敗`;
+        throw new Error(msg);
       }
 
-      return await response.json();
+      return responseData;
     }
 
     window.renderCards = function() {
