@@ -5,22 +5,43 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-goog-api-key'
   );
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // 1. 診斷模式：直接用瀏覽器開啟網址檢測後端與金鑰狀態
+  // 1. 診斷與測試模式：直接開啟網址不僅看狀態，更直接向 Google 發送一則微型測試確保金鑰可用
   if (req.method === 'GET') {
+    let testResult = '未測試';
+    if (apiKey) {
+      try {
+        const pingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+        const testRes = await fetch(pingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Hello' }] }]
+          })
+        });
+        testResult = testRes.ok ? 'Google 驗證成功 (200 OK)' : `Google 回應錯誤 (${testRes.status})`;
+      } catch (err) {
+        testResult = `測試請求例外: ${err.message}`;
+      }
+    }
+
     return res.status(200).json({
       status: 'ok',
       message: 'OCR API 端點運作正常',
       hasApiKey: !!apiKey,
-      apiKeyPrefix: apiKey ? apiKey.substring(0, 6) + '...' : '尚未設定 GEMINI_API_KEY'
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : '尚未設定 GEMINI_API_KEY',
+      keyVerification: testResult
     });
   }
 
@@ -40,7 +61,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 移除 data:image/...;base64, 前綴
+    // 移除 base64 標頭
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
     const promptText = `請分析這張名片圖片，精確提取下列四項資訊：
@@ -56,11 +77,12 @@ export default async function handler(req, res) {
     const payload = {
       contents: [
         {
+          role: 'user',
           parts: [
             { text: promptText },
             {
               inlineData: {
-                mimeType: "image/jpeg",
+                mimeType: 'image/jpeg',
                 data: base64Data
               }
             }
@@ -68,24 +90,24 @@ export default async function handler(req, res) {
         }
       ],
       generationConfig: {
-        responseMimeType: "application/json",
+        responseMimeType: 'application/json',
         responseSchema: {
-          type: "OBJECT",
+          type: 'OBJECT',
           properties: {
-            company: { type: "STRING" },
-            name: { type: "STRING" },
+            company: { type: 'STRING' },
+            name: { type: 'STRING' },
             addresses: {
-              type: "ARRAY",
-              items: { type: "STRING" }
+              type: 'ARRAY',
+              items: { type: 'STRING' }
             },
-            email: { type: "STRING" }
+            email: { type: 'STRING' }
           },
-          required: ["company", "name", "addresses", "email"]
+          required: ['company', 'name', 'addresses', 'email']
         }
       }
     };
 
-    // 依序嘗試穩定可用的模型
+    // 依序嘗試相容 AQ. 新版金鑰的模型
     const candidateModels = [
       'gemini-2.5-flash',
       'gemini-1.5-flash',
@@ -96,10 +118,13 @@ export default async function handler(req, res) {
 
     for (const model of candidateModels) {
       try {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey // 同時支援新版 AQ. 與舊版 AIza 金鑰規格
+          },
           body: JSON.stringify(payload)
         });
 
@@ -112,11 +137,11 @@ export default async function handler(req, res) {
           }
         } else {
           const errBody = await response.text();
-          console.error(`Gemini API [${model}] 回傳錯誤:`, errBody);
+          console.error(`Gemini API [${model}] 錯誤:`, errBody);
           lastErrorDetail = `[${model}] ${errBody}`;
         }
       } catch (err) {
-        lastErrorDetail = `[${model}] 請求例外: ${err.message}`;
+        lastErrorDetail = `[${model}] 例外: ${err.message}`;
       }
     }
 
