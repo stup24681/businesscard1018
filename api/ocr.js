@@ -118,11 +118,11 @@ export default async function handler(req, res) {
       }
     };
 
-    // 依序嘗試 Google 官方標準的多模態 Flash 模型
+    // 依據您 Google 帳號實測驗證回傳的可用模型清單
     const candidateModels = [
-      'gemini-1.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro'
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+      'gemini-2.5-pro'
     ];
 
     let lastErrorDetail = null;
