@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // 設定 CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -14,7 +13,6 @@ export default async function handler(req, res) {
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // 1. 診斷模式
   if (req.method === 'GET') {
     let testResult = '未測試';
     let availableModels = [];
@@ -47,7 +45,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: 'ok',
-      message: 'OCR API 端點運作正常 (已啟用極速無思考模式)',
+      message: 'OCR API 運作中 (高精準速效版)',
       hasApiKey: !!apiKey,
       apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : '尚未設定 GEMINI_API_KEY',
       keyVerification: testResult,
@@ -61,7 +59,7 @@ export default async function handler(req, res) {
 
   if (!apiKey) {
     return res.status(500).json({ 
-      error: '伺服器未讀取到 GEMINI_API_KEY，請確認已在 Vercel Settings -> Environment Variables 設定好並重新部署。' 
+      error: '伺服器未讀取到 GEMINI_API_KEY，請確認已在 Vercel 設定環境變數。' 
     });
   }
 
@@ -71,16 +69,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 移除 base64 標頭
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    const promptText = `你是一個極速名片辨識引擎。請辨識名片中的四大欄位：
-1. company: 公司名稱
-2. name: 姓名
-3. addresses: 公司地點/完整地址（字串陣列，有多處地址請全列出）
-4. email: 電子信箱
+    // 精準提示詞：明確聚焦於繁體中文與名片各區塊排版識別
+    const promptText = `你是一個專業的名片視覺辨識引擎。請辨識名片中的四大欄位：
+1. company: 公司/企業全名或主要商號
+2. name: 人物姓名（若有名稱與職稱在一起，請僅保留姓名）
+3. addresses: 公司地點或地址（陣列，有多處地址或分公司請完整列出，若名片有地址請務必提取出來）
+4. email: 電子郵件信箱
 
-嚴格規則：名片未載明或模糊不清的欄位一律給空字串 "" 或空陣列 []，嚴禁虛構猜測。請直接輸出 JSON。`;
+規則：名片完全沒有提供的欄位填空字串 "" 或空陣列 []，不得捏造。請直接輸出 JSON。`;
 
     const payload = {
       contents: [
@@ -100,10 +98,8 @@ export default async function handler(req, res) {
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        // 核心加速關鍵：關閉 Thinking 深度推理，消除 10~20 秒的推導延遲
-        thinkingConfig: {
-          thinkingBudget: 0
-        },
+        // 關鍵提速技巧：限制輸出 Token 數，名片資料簡短，限制後模型不再漫長推導
+        maxOutputTokens: 350,
         responseSchema: {
           type: 'OBJECT',
           properties: {
@@ -120,7 +116,6 @@ export default async function handler(req, res) {
       }
     };
 
-    // 優先使用速度最快的 flash 模型
     const candidateModels = [
       'gemini-2.5-flash',
       'gemini-flash-latest',
@@ -149,22 +144,6 @@ export default async function handler(req, res) {
             return res.status(200).json(parsed);
           }
         } else {
-          // 若該模型不支援 thinkingConfig 語法，自動退回不帶 thinkingConfig 的配置嘗試
-          if (response.status === 400) {
-            const fallbackPayload = { ...payload };
-            delete fallbackPayload.generationConfig.thinkingConfig;
-            const retryRes = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-              body: JSON.stringify(fallbackPayload)
-            });
-            if (retryRes.ok) {
-              const resData = await retryRes.json();
-              const resultText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (resultText) return res.status(200).json(JSON.parse(resultText));
-            }
-          }
-
           const errBody = await response.text();
           console.error(`Gemini API [${model}] 錯誤:`, errBody);
           lastErrorDetail = `[${model} HTTP ${response.status}] ${errBody}`;
