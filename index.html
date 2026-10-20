@@ -581,9 +581,8 @@
       }, 2500);
     };
 
-    // 針對手機拍照進行最佳化：長邊限制 1024px，輸出輕量化 JPEG (約 60KB-120KB)
-    // 徹底避免手機千萬畫素照片突破 Vercel 4.5MB Payload 限制
-    function compressImageFile(file, maxWidth = 1024, maxHeight = 768, quality = 0.65) {
+    // 還原高品質壓縮：長邊 1800px，JPEG 0.88 高保真，文字清清楚楚，體積約 180KB-300KB（遠低於 Vercel 4.5MB）
+    function compressImageFile(file, maxWidth = 1800, maxHeight = 1200, quality = 0.88) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = () => reject(new Error('讀取圖片失敗'));
@@ -602,6 +601,9 @@
             canvas.width = w;
             canvas.height = h;
             const ctx = canvas.getContext('2d');
+            // 平滑銳利度處理
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0, w, h);
             resolve(canvas.toDataURL('image/jpeg', quality));
           };
@@ -923,11 +925,11 @@
       document.getElementById('batchModal').classList.add('hidden');
     }
 
-    // 最佳化手機批量辨識：並行併發（Concurrency Pool）控制，且避免逾時
+    // 精準優先的批量辨識流程
     async function handleBatchFilesSelected(files) {
       const fileList = Array.from(files).slice(0, 10);
       if (files.length > 10) {
-        window.showToast('已為您自動擷取前 10 張名片處理', 'error');
+        window.showToast('已為您自動選取前 10 張名片處理', 'error');
       }
 
       batchQueue = [];
@@ -942,8 +944,8 @@
       progressBox.classList.remove('hidden');
       saveBtn.disabled = true;
 
-      // 步驟一：先極速完成所有圖片的手機端微縮壓縮，並先渲染預覽列（絕不卡住）
-      progressLabel.textContent = '正在壓縮手機相片...';
+      // 步驟一：高畫質壓縮準備
+      progressLabel.textContent = '正在優化相片清晰度...';
       const compressedItems = [];
       for (let i = 0; i < fileList.length; i++) {
         try {
@@ -954,11 +956,10 @@
             company: '',
             name: '',
             addresses: [],
-            email: '',
-            status: 'waiting'
+            email: ''
           });
         } catch (e) {
-          console.warn(`第 ${i + 1} 張圖片壓縮失敗:`, e);
+          console.warn(`第 ${i + 1} 張處理失敗:`, e);
         }
       }
 
@@ -970,7 +971,7 @@
 
       batchQueue = compressedItems;
 
-      // 預先在畫面上生成每一張名片的 DOM 骨架
+      // 預先產生卡片預覽
       compressedItems.forEach((item, idx) => {
         const row = document.createElement('div');
         row.id = `batchRow_${idx}`;
@@ -978,8 +979,8 @@
         row.innerHTML = `
           <img src="${item.frontImage}" class="w-14 h-9 object-cover rounded-lg border border-slate-200 shrink-0">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
-            <input type="text" placeholder="公司名稱 (辨識中...)" class="batch-comp px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs transition">
-            <input type="text" placeholder="姓名 (辨識中...)" class="batch-name px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs transition">
+            <input type="text" placeholder="公司名稱 (等待辨識)" class="batch-comp px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs transition">
+            <input type="text" placeholder="姓名 (等待辨識)" class="batch-name px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs transition">
             <input type="text" placeholder="公司地址" class="batch-addr px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs transition">
             <input type="text" placeholder="Email" class="batch-email px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-mono transition">
           </div>
@@ -988,16 +989,18 @@
         container.appendChild(row);
       });
 
-      // 步驟二：以 2 張為一組進行併發加速辨識（不會讓手機過載，也不會超時）
-      progressLabel.textContent = 'AI 極速辨識中...';
-      let completedCount = 0;
+      // 步驟二：精準逐筆辨識（單筆確保品質與 Google API 頻率穩定，兼顧高解析度）
+      progressLabel.textContent = 'AI 深入精準辨識中...';
       const total = compressedItems.length;
 
-      const processCard = async (index) => {
-        const item = compressedItems[index];
-        const row = document.getElementById(`batchRow_${index}`);
+      for (let i = 0; i < total; i++) {
+        const item = compressedItems[i];
+        const row = document.getElementById(`batchRow_${i}`);
         const statusEl = row ? row.querySelector('.batch-status-icon') : null;
-        if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-semibold animate-pulse">辨識中</span>';
+
+        if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-semibold animate-pulse">辨識中...</span>';
+        progressCount.textContent = `${i + 1} / ${total}`;
+        progressBar.style.width = `${Math.round(((i) / total) * 100)}%`;
 
         try {
           const ocrResult = await requestBackendOcr(item.frontImage);
@@ -1009,37 +1012,33 @@
           if (row) {
             row.querySelector('.batch-comp').value = item.company;
             row.querySelector('.batch-name').value = item.name;
-            row.querySelector('.batch-addr').value = item.addresses.join('; ');
+            row.querySelector('.batch-addr').value = (item.addresses || []).join('; ');
             row.querySelector('.batch-email').value = item.email;
-            if (statusEl) statusEl.innerHTML = '<span class="text-emerald-600 font-bold">✓ 完成</span>';
+            
+            const hasAny = item.company || item.name || (item.addresses && item.addresses.length > 0) || item.email;
+            if (hasAny) {
+              if (statusEl) statusEl.innerHTML = '<span class="text-emerald-600 font-bold">✓ 完成</span>';
+            } else {
+              if (statusEl) statusEl.innerHTML = '<span class="text-amber-500 font-medium">查無文字</span>';
+            }
           }
         } catch (e) {
-          console.error(`第 ${index + 1} 張辨識失敗:`, e);
-          if (statusEl) statusEl.innerHTML = `<span class="text-amber-500 font-medium" title="${e.message}">未辨出</span>`;
+          console.error(`第 ${i + 1} 張辨識失敗:`, e);
+          if (statusEl) {
+            statusEl.innerHTML = `<span class="text-rose-500 font-medium cursor-help" title="${e.message || '辨識失敗'}">未辨出 ⓘ</span>`;
+          }
           if (row) {
             row.querySelector('.batch-comp').placeholder = '請手動輸入公司';
             row.querySelector('.batch-name').placeholder = '請手動輸入姓名';
           }
-        } finally {
-          completedCount++;
-          progressCount.textContent = `${completedCount} / ${total}`;
-          progressBar.style.width = `${Math.round((completedCount / total) * 100)}%`;
         }
-      };
 
-      // 每次處理 2 張（平衡手機頻寬與 Google 速率）
-      const concurrency = 2;
-      for (let i = 0; i < total; i += concurrency) {
-        const chunk = [];
-        for (let j = i; j < Math.min(i + concurrency, total); j++) {
-          chunk.push(processCard(j));
-        }
-        await Promise.all(chunk);
+        progressBar.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
       }
 
       saveBtn.disabled = false;
       progressLabel.textContent = '辨識完畢！';
-      window.showToast(`已完成 ${total} 張名片處理，可核對後存入卡夾！`);
+      window.showToast(`已完成 ${total} 張名片辨識，可直接確認並存入卡夾！`);
     }
 
     function saveAllBatchCards() {
