@@ -1,5 +1,9 @@
+export const config = {
+  maxDuration: 30, // 嘗試將 Vercel Function 上限拉至 30 秒
+};
+
 export default async function handler(req, res) {
-  // 設定跨域 Header
+  // 設定 CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -14,7 +18,7 @@ export default async function handler(req, res) {
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // GET 快速檢測端點
+  // GET 快速檢測
   if (req.method === 'GET') {
     return res.status(200).json({
       status: 'ok',
@@ -37,26 +41,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 解析實際的 MIME 類型 (例如 image/jpeg, image/png, image/webp)
+    // 取得乾淨的 base64 與正確的 mimeType
     let mimeType = 'image/jpeg';
-    const mimeMatch = image.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
-    if (mimeMatch && mimeMatch[1]) {
-      mimeType = mimeMatch[1];
+    const match = image.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
+    if (match && match[1]) {
+      mimeType = match[1];
     }
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    const promptText = `請仔細分析這張名片圖片，精確提取下列四項核心欄位，並只回傳純 JSON 物件：
+    const promptText = `你是一位專業名片辨識專家。請從名片圖片中精準提取下列資訊並只輸出 JSON：
 {
   "company": "公司或機構名稱",
-  "name": "聯絡人姓名 (不含總經理、經理等職稱)",
+  "name": "聯絡人姓名 (不含總經理、業務等頭銜)",
   "addresses": ["公司地址或地點，可多個"],
   "email": "電子信箱"
 }
 注意事項：
-- 若名片中沒有某項資訊，請填寫空字串 "" 或空陣列 []，切勿瞎猜。
-- 請直接回傳符合 JSON 語法的純物件，不要包含 markdown 標籤。`;
+- 找不到的欄位請填空字串 "" 或空陣列 []。
+- 只輸出合法 JSON 物件，嚴禁加入 markdown 語法。`;
 
-    // 依 Google 官方規範：圖片擺在前面，文字提示詞擺在後面
+    // 依 Google Vision 規範：圖片放前，指令放後
     const payload = {
       contents: [
         {
@@ -79,47 +83,34 @@ export default async function handler(req, res) {
       }
     };
 
-    const candidateModels = [
-      'gemini-2.5-flash',
-      'gemini-flash-latest',
-      'gemini-1.5-flash'
-    ];
+    // 直接使用您帳號已經驗證支援的 gemini-2.5-flash
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    let lastError = null;
-
-    for (const model of candidateModels) {
-      try {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-          const resData = await response.json();
-          let text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-          text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-          const parsed = JSON.parse(text);
-          return res.status(200).json(parsed);
-        } else {
-          const errText = await response.text();
-          console.error(`Google API [${model}] 錯誤代碼 ${response.status}:`, errText);
-          lastError = `[${model}] HTTP ${response.status}: ${errText}`;
-        }
-      } catch (e) {
-        lastError = `[${model}] 例外錯誤: ${e.message}`;
-      }
-    }
-
-    return res.status(502).json({
-      error: 'Google 辨識被拒絕',
-      details: lastError
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify(payload)
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(text);
+      return res.status(200).json(parsed);
+    } else {
+      const errText = await response.text();
+      console.error('Google API 報錯:', response.status, errText);
+      return res.status(502).json({
+        error: `Google API 錯誤 (HTTP ${response.status})`,
+        details: errText
+      });
+    }
   } catch (err) {
-    return res.status(500).json({ error: err.message || '後端發生未知例外' });
+    console.error('後端異常:', err);
+    return res.status(500).json({ error: err.message || '後端伺服器內部錯誤' });
   }
 }
