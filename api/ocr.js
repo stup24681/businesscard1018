@@ -13,37 +13,12 @@ export default async function handler(req, res) {
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // 診斷檢測
+  // GET 快速檢測端點
   if (req.method === 'GET') {
-    let testResult = '未測試';
-    let availableModels = [];
-    if (apiKey) {
-      try {
-        const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-        const listRes = await fetch(listUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          }
-        });
-        if (listRes.ok) {
-          const listData = await listRes.json();
-          availableModels = (listData.models || []).map(m => m.name.replace('models/', ''));
-          testResult = 'Google 驗證成功 (200 OK)';
-        } else {
-          testResult = `Google 回應錯誤 (${listRes.status})`;
-        }
-      } catch (err) {
-        testResult = `測試請求例外: ${err.message}`;
-      }
-    }
-
     return res.status(200).json({
       status: 'ok',
       hasApiKey: !!apiKey,
-      keyVerification: testResult,
-      modelsSample: availableModels.slice(0, 5)
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : '未設定'
     });
   }
 
@@ -52,72 +27,57 @@ export default async function handler(req, res) {
   }
 
   if (!apiKey) {
-    return res.status(500).json({ error: '伺服器未讀取到 GEMINI_API_KEY，請確認 Vercel 環境變數。' });
+    return res.status(500).json({ error: '伺服器環境變數未讀取到 GEMINI_API_KEY' });
   }
 
   const { image } = req.body || {};
   if (!image) {
-    return res.status(400).json({ error: '未接收到名片圖片資料' });
+    return res.status(400).json({ error: '未接收到名片圖片' });
   }
 
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    // 精準提示詞：完整定義名片核心四要素，還原最穩定的提取邏輯
-    const promptText = `請仔細分析這張名片圖片，精確辨識並提取下列四項核心資訊：
-1. company: 公司/機構名稱（若有中英文名稱，請以主要中文字號為主）
-2. name: 聯絡人姓名（若名片上姓名與職稱在一起，例如「總經理 陳大明」，請只提取真實姓名「陳大明」）
-3. addresses: 公司地點或地址（以字串陣列回傳。若有多個分公司或工廠地址請完整提取，若名片上有郵遞區號或完整街道門牌請完整保留）
-4. email: 電子郵件信箱（常見如 @gmail.com 或公司自訂網域名稱）
+    const promptText = `你是一個專業的名片 OCR 辨識系統。請仔細分析這張名片圖片，精確提取下列四個欄位，並只回傳純 JSON 物件：
+{
+  "company": "公司或機構名稱",
+  "name": "聯絡人中文或英文姓名（不要包含總經理、業務等職稱）",
+  "addresses": ["公司地址或地點，可多個，保留完整縣市與街道門牌"],
+  "email": "電子郵件地址"
+}
 
-規則：
-- 名片中完全沒有提供的資訊，請填寫空字串 "" 或空陣列 []，絕對不要自行瞎猜或捏造。
-- 必須以標準 JSON 物件回傳。`;
+注意事項：
+1. 若名片中沒有某個資訊，請填寫空字串 "" 或空陣列 []，千萬不要自行瞎猜捏造。
+2. 只要輸出標準 JSON，不要加入額外的 markdown 註解。`;
 
     const payload = {
       contents: [
         {
-          role: 'user',
           parts: [
+            { text: promptText },
             {
               inlineData: {
                 mimeType: 'image/jpeg',
                 data: base64Data
               }
-            },
-            { text: promptText }
+            }
           ]
         }
       ],
       generationConfig: {
-        responseMimeType: 'application/json',
         temperature: 0.1,
-        // 不限制過小的 token，保證繁體中文字與多地址能完整輸出不截斷
-        maxOutputTokens: 1024,
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            company: { type: 'STRING' },
-            name: { type: 'STRING' },
-            addresses: {
-              type: 'ARRAY',
-              items: { type: 'STRING' }
-            },
-            email: { type: 'STRING' }
-          },
-          required: ['company', 'name', 'addresses', 'email']
-        }
+        responseMimeType: 'application/json'
       }
     };
 
-    // 依據您 Google 帳號支援的模型優先順序
+    // 優先使用 Google 最新、最穩定且支援視覺的正式模型
     const candidateModels = [
       'gemini-2.5-flash',
       'gemini-flash-latest',
-      'gemini-2.5-pro'
+      'gemini-1.5-flash'
     ];
 
-    let lastErrorDetail = null;
+    let lastError = null;
 
     for (const model of candidateModels) {
       try {
@@ -133,27 +93,26 @@ export default async function handler(req, res) {
 
         if (response.ok) {
           const resData = await response.json();
-          const resultText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (resultText) {
-            const parsed = JSON.parse(resultText);
-            return res.status(200).json(parsed);
-          }
+          let text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+          // 去除可能的 markdown 標記
+          text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          const parsed = JSON.parse(text);
+          return res.status(200).json(parsed);
         } else {
-          const errBody = await response.text();
-          console.error(`Gemini [${model}] 錯誤:`, errBody);
-          lastErrorDetail = `[${model} HTTP ${response.status}] ${errBody}`;
+          const errText = await response.text();
+          console.error(`Google API [${model}] 錯誤代碼 ${response.status}:`, errText);
+          lastError = `HTTP ${response.status}: ${errText}`;
         }
-      } catch (err) {
-        lastErrorDetail = `[${model}] ${err.message}`;
+      } catch (e) {
+        lastError = `[${model}] ${e.message}`;
       }
     }
 
     return res.status(502).json({
-      error: 'Google Gemini 辨識失敗',
-      details: lastErrorDetail
+      error: 'Google 辨識被拒絕',
+      details: lastError
     });
-  } catch (error) {
-    console.error('OCR 異常:', error);
-    return res.status(500).json({ error: error.message || '伺服器內部錯誤' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || '後端發生例外錯誤' });
   }
 }
