@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+  // 設定跨域 Header
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -27,39 +28,47 @@ export default async function handler(req, res) {
   }
 
   if (!apiKey) {
-    return res.status(500).json({ error: '伺服器環境變數未讀取到 GEMINI_API_KEY' });
+    return res.status(500).json({ error: '伺服器未讀取到 GEMINI_API_KEY，請確認 Vercel 環境變數設定。' });
   }
 
   const { image } = req.body || {};
   if (!image) {
-    return res.status(400).json({ error: '未接收到名片圖片' });
+    return res.status(400).json({ error: '未接收到名片圖片資料' });
   }
 
   try {
+    // 解析實際的 MIME 類型 (例如 image/jpeg, image/png, image/webp)
+    let mimeType = 'image/jpeg';
+    const mimeMatch = image.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
+    if (mimeMatch && mimeMatch[1]) {
+      mimeType = mimeMatch[1];
+    }
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    const promptText = `你是一個專業的名片 OCR 辨識系統。請仔細分析這張名片圖片，精確提取下列四個欄位，並只回傳純 JSON 物件：
+    const promptText = `請仔細分析這張名片圖片，精確提取下列四項核心欄位，並只回傳純 JSON 物件：
 {
   "company": "公司或機構名稱",
-  "name": "聯絡人中文或英文姓名（不要包含總經理、業務等職稱）",
-  "addresses": ["公司地址或地點，可多個，保留完整縣市與街道門牌"],
-  "email": "電子郵件地址"
+  "name": "聯絡人姓名 (不含總經理、經理等職稱)",
+  "addresses": ["公司地址或地點，可多個"],
+  "email": "電子信箱"
 }
-
 注意事項：
-1. 若名片中沒有某個資訊，請填寫空字串 "" 或空陣列 []，千萬不要自行瞎猜捏造。
-2. 只要輸出標準 JSON，不要加入額外的 markdown 註解。`;
+- 若名片中沒有某項資訊，請填寫空字串 "" 或空陣列 []，切勿瞎猜。
+- 請直接回傳符合 JSON 語法的純物件，不要包含 markdown 標籤。`;
 
+    // 依 Google 官方規範：圖片擺在前面，文字提示詞擺在後面
     const payload = {
       contents: [
         {
           parts: [
-            { text: promptText },
             {
               inlineData: {
-                mimeType: 'image/jpeg',
+                mimeType: mimeType,
                 data: base64Data
               }
+            },
+            {
+              text: promptText
             }
           ]
         }
@@ -70,7 +79,6 @@ export default async function handler(req, res) {
       }
     };
 
-    // 優先使用 Google 最新、最穩定且支援視覺的正式模型
     const candidateModels = [
       'gemini-2.5-flash',
       'gemini-flash-latest',
@@ -81,7 +89,7 @@ export default async function handler(req, res) {
 
     for (const model of candidateModels) {
       try {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
@@ -94,17 +102,16 @@ export default async function handler(req, res) {
         if (response.ok) {
           const resData = await response.json();
           let text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-          // 去除可能的 markdown 標記
           text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
           const parsed = JSON.parse(text);
           return res.status(200).json(parsed);
         } else {
           const errText = await response.text();
           console.error(`Google API [${model}] 錯誤代碼 ${response.status}:`, errText);
-          lastError = `HTTP ${response.status}: ${errText}`;
+          lastError = `[${model}] HTTP ${response.status}: ${errText}`;
         }
       } catch (e) {
-        lastError = `[${model}] ${e.message}`;
+        lastError = `[${model}] 例外錯誤: ${e.message}`;
       }
     }
 
@@ -113,6 +120,6 @@ export default async function handler(req, res) {
       details: lastError
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message || '後端發生例外錯誤' });
+    return res.status(500).json({ error: err.message || '後端發生未知例外' });
   }
 }
