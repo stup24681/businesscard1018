@@ -14,13 +14,12 @@ export default async function handler(req, res) {
 
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // 1. 診斷與測試模式：直接開啟網址不僅看狀態，更直接向 Google 發送一則微型測試確保金鑰可用
+  // 1. 診斷模式
   if (req.method === 'GET') {
     let testResult = '未測試';
     let availableModels = [];
     if (apiKey) {
       try {
-        // 先測試清單端點，驗證金鑰同時獲取帳號可用的模型
         const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
         const listRes = await fetch(listUrl, {
           method: 'GET',
@@ -48,7 +47,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: 'ok',
-      message: 'OCR API 端點運作正常',
+      message: 'OCR API 端點運作正常 (已啟用極速無思考模式)',
       hasApiKey: !!apiKey,
       apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : '尚未設定 GEMINI_API_KEY',
       keyVerification: testResult,
@@ -75,15 +74,13 @@ export default async function handler(req, res) {
     // 移除 base64 標頭
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    const promptText = `請分析這張名片圖片，精確提取下列四項資訊：
+    const promptText = `你是一個極速名片辨識引擎。請辨識名片中的四大欄位：
 1. company: 公司名稱
 2. name: 姓名
-3. addresses: 公司地點/地址（字串陣列，若有多個分公司或辦公室請全部列出）
+3. addresses: 公司地點/完整地址（字串陣列，有多處地址請全列出）
 4. email: 電子信箱
 
-嚴格規定：
-- 若名片中未提供或無法辨識該欄位，請保留為空字串或空陣列，絕對不可自行捏造或猜測。
-- 請直接回傳符合 JSON 格式的資料。`;
+嚴格規則：名片未載明或模糊不清的欄位一律給空字串 "" 或空陣列 []，嚴禁虛構猜測。請直接輸出 JSON。`;
 
     const payload = {
       contents: [
@@ -102,6 +99,11 @@ export default async function handler(req, res) {
       ],
       generationConfig: {
         responseMimeType: 'application/json',
+        temperature: 0.1,
+        // 核心加速關鍵：關閉 Thinking 深度推理，消除 10~20 秒的推導延遲
+        thinkingConfig: {
+          thinkingBudget: 0
+        },
         responseSchema: {
           type: 'OBJECT',
           properties: {
@@ -118,11 +120,11 @@ export default async function handler(req, res) {
       }
     };
 
-    // 依據您 Google 帳號實測驗證回傳的可用模型清單
+    // 優先使用速度最快的 flash 模型
     const candidateModels = [
       'gemini-2.5-flash',
       'gemini-flash-latest',
-      'gemini-2.5-pro'
+      'gemini-2.0-flash'
     ];
 
     let lastErrorDetail = null;
@@ -134,7 +136,7 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey // 同時提供 header 與 query string，確保 100% 相容
+            'x-goog-api-key': apiKey
           },
           body: JSON.stringify(payload)
         });
@@ -147,6 +149,22 @@ export default async function handler(req, res) {
             return res.status(200).json(parsed);
           }
         } else {
+          // 若該模型不支援 thinkingConfig 語法，自動退回不帶 thinkingConfig 的配置嘗試
+          if (response.status === 400) {
+            const fallbackPayload = { ...payload };
+            delete fallbackPayload.generationConfig.thinkingConfig;
+            const retryRes = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+              body: JSON.stringify(fallbackPayload)
+            });
+            if (retryRes.ok) {
+              const resData = await retryRes.json();
+              const resultText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (resultText) return res.status(200).json(JSON.parse(resultText));
+            }
+          }
+
           const errBody = await response.text();
           console.error(`Gemini API [${model}] 錯誤:`, errBody);
           lastErrorDetail = `[${model} HTTP ${response.status}] ${errBody}`;
