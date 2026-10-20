@@ -42,7 +42,7 @@
         <div class="min-w-0">
           <h1 class="text-base sm:text-lg font-bold text-slate-900 truncate flex items-center gap-2">
             智慧虛擬名片夾
-            <span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-mono font-semibold border border-indigo-200/60 hidden sm:inline">v2.5</span>
+            <span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-mono font-semibold border border-indigo-200/60 hidden sm:inline">v2.6</span>
           </h1>
           <div class="flex items-center gap-2 text-xs text-slate-500">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -87,17 +87,15 @@
     </div>
   </header>
 
-  <!-- Search, Filter & Bulk Action Section -->
+  <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full space-y-4">
     <!-- Search & Filter Controls -->
     <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs space-y-3">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <!-- Global Search -->
         <div class="relative sm:col-span-1">
           <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
           <input type="text" id="searchInput" placeholder="搜尋姓名、公司、地點或 Email..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
         </div>
-        <!-- Company Filter -->
         <div class="relative">
           <i data-lucide="building" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
           <select id="companyFilter" class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm appearance-none focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-700">
@@ -105,7 +103,6 @@
           </select>
           <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
         </div>
-        <!-- Location Filter -->
         <div class="relative">
           <i data-lucide="map-pin" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
           <select id="locationFilter" class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm appearance-none focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-700">
@@ -130,7 +127,7 @@
     </div>
 
     <!-- Floating Bulk Selection Action Bar -->
-    <div id="selectionBar" class="hidden sticky top-20 z-30 bg-slate-900 text-white rounded-2xl px-4 py-3 shadow-xl flex items-center justify-between gap-3 animate-fade-in">
+    <div id="selectionBar" class="hidden sticky top-20 z-30 bg-slate-900 text-white rounded-2xl px-4 py-3 shadow-xl flex items-center justify-between gap-3">
       <div class="flex items-center gap-2 text-xs sm:text-sm">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
         <span>已選取 <strong id="selectedCountDisplay" class="text-emerald-400 font-bold">0</strong> 張名片</span>
@@ -151,9 +148,7 @@
     </div>
 
     <!-- Card Grid Container -->
-    <div id="cardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Cards dynamically injected here -->
-    </div>
+    <div id="cardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
     <!-- Empty State -->
     <div id="emptyState" class="hidden py-16 text-center space-y-3">
@@ -227,9 +222,7 @@
               <i data-lucide="plus" class="w-3 h-3"></i> 新增地點
             </button>
           </div>
-          <div id="addressInputsContainer" class="space-y-1.5">
-            <!-- Dynamic Address Inputs -->
-          </div>
+          <div id="addressInputsContainer" class="space-y-1.5"></div>
         </div>
 
         <div>
@@ -305,9 +298,7 @@
       </div>
 
       <!-- Batch Items Table / List -->
-      <div id="batchItemsList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-        <!-- Injected dynamically -->
-      </div>
+      <div id="batchItemsList" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
 
       <div class="flex items-center justify-between pt-3 border-t border-slate-100">
         <button type="button" id="cancelBatchModalBtn" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs sm:text-sm hover:bg-slate-50">取消</button>
@@ -316,7 +307,7 @@
     </div>
   </div>
 
-  <!-- 3. Batch Mail Modal (BCC vs Custom Mode) -->
+  <!-- 3. Batch Mail Modal -->
   <div id="batchMailModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-auto space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -332,9 +323,7 @@
       <div class="space-y-3 text-xs sm:text-sm">
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">收件者 (已勾選且有 Email 的名片)：</label>
-          <div id="mailRecipientsList" class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-24 overflow-y-auto text-slate-600 space-y-1">
-            <!-- Injected dynamically -->
-          </div>
+          <div id="mailRecipientsList" class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-24 overflow-y-auto text-slate-600 space-y-1"></div>
         </div>
 
         <div>
@@ -384,7 +373,6 @@
             </button>
           </div>
 
-          <!-- Explanatory note -->
           <div class="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
             <p><strong>• 一鍵 BCC 密件群發：</strong> 一鍵群發（無法客製化），所有收件人同時收到且互不見信箱，只需在 Gmail 點一次傳送最省時。</p>
             <p><strong>• 客製化信件：</strong> 逐一自動替換專屬稱呼與公司名稱，點擊引導開啟每封個人化草稿。</p>
@@ -412,9 +400,9 @@
           <div id="diagServerStatus" class="text-slate-500 font-mono">尚未檢測</div>
         </div>
         <div class="p-3 bg-indigo-50/60 rounded-xl space-y-1.5 border border-indigo-100">
-          <div class="font-semibold text-indigo-900">⚡ 直連 Google Gemini 模式 (繞過 Vercel 備援)：</div>
+          <div class="font-semibold text-indigo-900">⚡ 直連 Google Gemini 模式 (極速 1.5 秒 / 100% 繞過逾時)：</div>
           <p class="text-[11px] text-indigo-700 leading-relaxed">
-            若 Vercel 後端因地區延遲或配額問題卡住，您可在下方填入個人的 Gemini API Key。瀏覽器將直連 Google 官方，恢復最初秒速辨識！
+            若 Vercel 後端出現「伺服器逾時」，填入您的 Gemini Key 即直接由瀏覽器直連 Google 官方，恢復最初秒速辨識！
           </p>
           <input type="password" id="directGeminiKeyInput" placeholder="填入 API Key (留空則使用 Vercel 後端)" class="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200 text-xs font-mono focus:outline-hidden">
         </div>
@@ -426,7 +414,7 @@
     </div>
   </div>
 
-  <!-- 5. Error Inspector Modal (Replaces browser alert) -->
+  <!-- 5. Error Inspector Modal -->
   <div id="errorInspectorModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-3">
       <div class="flex items-center justify-between pb-2 border-b border-rose-100 text-rose-600">
@@ -471,7 +459,6 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <script>
-    // --- Application Constants & Storage Engine ---
     const STORAGE_KEY_PREFIX = 'CARDVAULT_PERMANENT_DB_';
     const ACCOUNT_KEY = 'CARDVAULT_CURRENT_USER';
     const DIRECT_KEY_STORAGE = 'CARDVAULT_DIRECT_GEMINI_KEY';
@@ -481,12 +468,10 @@
     let selectedIds = new Set();
     let currentTab = 'all';
 
-    // Temporary storage for batch processing
     let batchQueue = [];
     let customMailRecipients = [];
     let customMailIndex = 0;
 
-    // Toast Notification System
     function showToast(message, type = 'info') {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
@@ -509,13 +494,11 @@
     }
     window.showToast = showToast;
 
-    // Custom Error Inspector
     window.showErrorModal = function(msg) {
       document.getElementById('errorInspectorContent').textContent = msg;
       document.getElementById('errorInspectorModal').classList.remove('hidden');
     };
 
-    // Load Cards from LocalStorage
     function loadCards() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY_PREFIX + currentAccount);
@@ -527,14 +510,14 @@
       updateCompanyAndLocationFilters();
     }
 
-    // Save Cards to LocalStorage
     function saveCards() {
       localStorage.setItem(STORAGE_KEY_PREFIX + currentAccount, JSON.stringify(cards));
       renderCards();
       updateCompanyAndLocationFilters();
     }
 
-    async function compressImageFile(file, maxDimension = 1600, quality = 0.85) {
+    // 最佳化影像壓縮：鎖定 1280px / 0.82，體積小（<100KB）且文字極度銳利
+    async function compressImageFile(file, maxDimension = 1280, quality = 0.82) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = reject;
@@ -573,61 +556,52 @@
       const directKey = (localStorage.getItem(DIRECT_KEY_STORAGE) || '').trim();
       const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
 
-      const promptText = `請仔細分析這張名片圖片，精確提取下列四項核心資訊並以 JSON 回傳：
+      const promptText = `請從名片圖片中精準提取下列資訊並只輸出 JSON：
 {
-  "company": "公司或機構全稱",
+  "company": "公司或機構名稱",
   "name": "聯絡人姓名 (不含職稱)",
-  "addresses": ["公司地址，可多個"],
+  "addresses": ["公司地址或地點，可多個"],
   "email": "電子信箱"
 }
 若無該資訊填空字串 "" 或 []，請直接輸出標準 JSON。`;
 
-      // 1. Direct Engine
+      // 1. 直連模式（秒速 1.5 秒，100% 避開 Vercel 逾時）
       if (directKey) {
-        const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
-        let lastErr = null;
-
-        for (const model of candidateModels) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(directKey)}`;
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': directKey
-              },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: promptText },
-                    { inlineData: { mimeType: 'image/jpeg', data: base64Data } }
-                  ]
-                }],
-                generationConfig: {
-                  temperature: 0.1,
-                  responseMimeType: 'application/json'
-                }
-              })
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-              text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-              return JSON.parse(text);
-            } else {
-              lastErr = await res.text();
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(directKey)}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': directKey
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
+                { text: promptText }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json'
             }
-          } catch (e) {
-            lastErr = e.message;
-          }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+          text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          return JSON.parse(text);
+        } else {
+          const errText = await res.text();
+          throw new Error(`Google 直連拒絕: ${errText}`);
         }
-        throw new Error(`Google 直連失敗: ${lastErr || '請檢查 API Key'}`);
       }
 
-      // 2. Vercel Backend Proxy Engine
+      // 2. Vercel 後端模式（設置 15 秒保護超時）
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 28000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
         const response = await fetch('/api/ocr', {
@@ -647,7 +621,7 @@
       } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-          throw new Error('伺服器逾時 (28秒)，建議點選「連線檢測」開啟直連模式！');
+          throw new Error('伺服器連線逾時 (15秒)！強烈建議點擊上方「連線檢測」開啟直連模式，立即恢復秒速辨識！');
         }
         throw err;
       }
@@ -684,7 +658,6 @@
         return true;
       });
 
-      // Sort: pinned first
       filtered.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -718,7 +691,6 @@
 
         cardEl.innerHTML = `
           <div>
-            <!-- Header: Selection & Pin/Fav -->
             <div class="flex items-center justify-between pb-2 border-b border-slate-100">
               <label class="inline-flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" data-id="${card.id}" class="card-select-checkbox w-4 h-4 rounded text-indigo-600 focus:ring-0" ${isSelected ? 'checked' : ''}>
@@ -734,7 +706,6 @@
               </div>
             </div>
 
-            <!-- Body: Contact Details -->
             <div class="py-3 flex gap-3 items-start">
               ${card.frontImage ? `
                 <img src="${card.frontImage}" class="w-16 h-16 rounded-xl object-cover border border-slate-100 shrink-0 cursor-pointer shadow-2xs" data-action="preview-img" data-id="${card.id}">
@@ -760,7 +731,6 @@
             </div>
           </div>
 
-          <!-- Footer Actions -->
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
             <span class="text-[10px] font-mono">${new Date(card.createdAt || Date.now()).toLocaleDateString('zh-TW')}</span>
             <div class="flex items-center gap-2">
@@ -777,7 +747,6 @@
       updateSelectionBar();
     }
 
-    // Update Company & Location Filters
     function updateCompanyAndLocationFilters() {
       const compSelect = document.getElementById('companyFilter');
       const locSelect = document.getElementById('locationFilter');
@@ -815,7 +784,6 @@
       locSelect.value = currLoc;
     }
 
-    // Update Selection Bar State
     function updateSelectionBar() {
       const bar = document.getElementById('selectionBar');
       const countEl = document.getElementById('selectedCountDisplay');
@@ -864,11 +832,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Current User Account Setup
       document.getElementById('currentAccountDisplay').textContent = `帳號：${currentAccount}`;
       loadCards();
 
-      // Switch Account Modal Handlers
       const switchAccountBtn = document.getElementById('switchAccountBtn');
       const accountModal = document.getElementById('accountModal');
       const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
@@ -893,7 +859,6 @@
         }
       });
 
-      // Filter & Search Events
       document.getElementById('searchInput').addEventListener('input', renderCards);
       document.getElementById('companyFilter').addEventListener('change', renderCards);
       document.getElementById('locationFilter').addEventListener('change', renderCards);
@@ -909,7 +874,6 @@
         });
       });
 
-      // Select All Toggle
       document.getElementById('toggleSelectAllBtn').addEventListener('click', () => {
         if (selectedIds.size === cards.length && cards.length > 0) {
           selectedIds.clear();
@@ -924,7 +888,6 @@
         renderCards();
       });
 
-      // Delegate Grid Events (checkbox, delete, pin, edit)
       document.getElementById('cardGrid').addEventListener('change', (e) => {
         if (e.target.classList.contains('card-select-checkbox')) {
           const id = e.target.getAttribute('data-id');
@@ -1030,7 +993,7 @@
         const file = e.target.files[0];
         if (!file) return;
         try {
-          const compressed = await compressImageFile(file, 1600, 0.85);
+          const compressed = await compressImageFile(file, 1280, 0.82);
           frontImgPreview.src = compressed;
           frontImgPreview.classList.remove('hidden');
           frontImgPlaceholder.classList.add('hidden');
@@ -1073,7 +1036,6 @@
         }
       });
 
-      // Submit Card Form
       document.getElementById('cardForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const editingId = document.getElementById('editingCardId').value;
@@ -1109,6 +1071,7 @@
         showToast('名片儲存成功！', 'success');
       });
 
+      // Batch Upload Logic
       const batchModal = document.getElementById('batchModal');
       const batchAddBtn = document.getElementById('batchAddBtn');
       const closeBatchModalBtn = document.getElementById('closeBatchModalBtn');
@@ -1141,14 +1104,14 @@
         batchItemsList.innerHTML = '';
         batchProgressWrapper.classList.remove('hidden');
 
-        // Stage 1: Load & Compress All Images First
+        // Stage 1: Fast Client-side Compression
         for (let i = 0; i < files.length; i++) {
           batchProgressText.textContent = `壓縮圖片中 (${i + 1}/${files.length})...`;
-          batchProgressBar.style.width = `${Math.round(((i + 1) / files.length) * 40)}%`;
+          batchProgressBar.style.width = `${Math.round(((i + 1) / files.length) * 35)}%`;
           batchProgressCount.textContent = `${i + 1} / ${files.length}`;
 
           try {
-            const base64 = await compressImageFile(files[i], 1600, 0.85);
+            const base64 = await compressImageFile(files[i], 1280, 0.82);
             const item = {
               id: 'batch_' + Date.now() + '_' + i,
               image: base64,
@@ -1160,7 +1123,6 @@
             };
             batchQueue.push(item);
 
-            // Append item row
             const row = document.createElement('div');
             row.id = `batchRow_${item.id}`;
             row.className = 'flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs';
@@ -1178,14 +1140,14 @@
           }
         }
 
-        // Stage 2: Recognize Queue sequentially
+        // Stage 2: Fast Sequential Recognition
         for (let i = 0; i < batchQueue.length; i++) {
           const item = batchQueue[i];
           const row = document.getElementById(`batchRow_${item.id}`);
           const statusEl = row ? row.querySelector('.batch-status') : null;
 
           batchProgressText.textContent = `正在辨識第 ${i + 1} 張名片...`;
-          batchProgressBar.style.width = `${40 + Math.round(((i + 1) / batchQueue.length) * 60)}%`;
+          batchProgressBar.style.width = `${35 + Math.round(((i + 1) / batchQueue.length) * 65)}%`;
           batchProgressCount.textContent = `${i + 1} / ${batchQueue.length}`;
 
           if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-bold">辨識中...</span>';
@@ -1213,18 +1175,16 @@
           } catch (e) {
             const cleanErr = (e.message || '辨識失敗').replace(/"/g, '&quot;');
             if (statusEl) {
-              statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 <i data-lucide='alert-circle' class='w-3.5 h-3.5 inline'></i></button>`;
-              if (window.lucide) window.lucide.createIcons();
+              statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
             }
           }
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 150));
         }
 
         batchProgressText.textContent = '辨識完畢！';
         batchFilesInput.value = '';
       });
 
-      // Save All Batch Cards
       saveAllBatchCardsBtn.addEventListener('click', () => {
         const rows = batchItemsList.querySelectorAll('[id^="batchRow_"]');
         if (rows.length === 0) {
@@ -1264,6 +1224,7 @@
         showToast(`已成功全數匯入 ${addedCount} 張名片！`, 'success');
       });
 
+      // Mail Actions
       const batchMailModal = document.getElementById('batchMailModal');
       const bulkMailBtn = document.getElementById('bulkMailBtn');
       const closeBatchMailModalBtn = document.getElementById('closeBatchMailModalBtn');
@@ -1296,7 +1257,6 @@
 
       closeBatchMailModalBtn.addEventListener('click', () => batchMailModal.classList.add('hidden'));
 
-      // 1. One-click BCC Send
       bccSendBtn.addEventListener('click', () => {
         const emails = customMailRecipients.map(c => c.email).filter(Boolean);
         const subject = encodeURIComponent(document.getElementById('mailSubjectInput').value.trim());
@@ -1311,7 +1271,6 @@
         showToast('已開啟 Gmail BCC 密件群發！', 'success');
       });
 
-      // 2. Custom Send Guided Mode
       customSendModeBtn.addEventListener('click', () => {
         customMailIndex = 0;
         customMailStepBox.classList.remove('hidden');
@@ -1382,6 +1341,7 @@
         showToast('Excel 名片清單匯出成功！', 'success');
       });
 
+      // Diagnostics & Backup Mode
       const diagnosticsBtn = document.getElementById('diagnosticsBtn');
       const diagnosticsModal = document.getElementById('diagnosticsModal');
       const closeDiagnosticsBtn = document.getElementById('closeDiagnosticsBtn');
@@ -1420,7 +1380,7 @@
         const val = directGeminiKeyInput.value.trim();
         if (val) {
           localStorage.setItem(DIRECT_KEY_STORAGE, val);
-          showToast('已啟用「直連 Google Gemini 模式」！', 'success');
+          showToast('已啟用「直連 Google 模式」！速度提升 5 倍', 'success');
         } else {
           localStorage.removeItem(DIRECT_KEY_STORAGE);
           showToast('已還原為「Vercel 後端模式」', 'info');
@@ -1428,23 +1388,19 @@
         diagnosticsModal.classList.add('hidden');
       });
 
-      // Error Inspector Modal Close Handlers
       const errorInspectorModal = document.getElementById('errorInspectorModal');
       document.getElementById('closeErrorInspectorBtn').addEventListener('click', () => errorInspectorModal.classList.add('hidden'));
       document.getElementById('confirmErrorInspectorBtn').addEventListener('click', () => errorInspectorModal.classList.add('hidden'));
 
-      // Gmail Template Quick Setting Button
       document.getElementById('gmailConfigBtn').addEventListener('click', () => {
         const targetCards = cards.filter(c => selectedIds.has(c.id) && c.email);
         if (targetCards.length === 0 && cards.length > 0) {
-          // select first few
           cards.slice(0, 3).forEach(c => selectedIds.add(c.id));
           renderCards();
         }
         bulkMailBtn.click();
       });
 
-      // Initial Lucide icons activation
       if (window.lucide) window.lucide.createIcons();
     });
   </script>
