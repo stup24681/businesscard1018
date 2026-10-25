@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 - 僅根據圖片中實際出現的字樣提取，絕對不要猜測或虛構。
 - 若無該資訊，字串請給空字串 ""，陣列請給空陣列 []。`;
 
-    // 採用先前 100% 成功辨識出「巨興醫學科技」的標準格式與模型
+    // 建立標準 Gemini Vision Payload
     const payload = {
       contents: [
         {
@@ -85,45 +85,50 @@ export default async function handler(req, res) {
       }
     };
 
-    // 唯一鎖定成功辨識的 gemini-2.5-flash
-    const targetModel = 'gemini-2.5-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+    // 依序嘗試：主力驗證成功的 gemini-2.5-flash，若遇限額則切換 gemini-1.5-flash 備援
+    const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    let lastError = null;
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(payload)
+    for (const model of models) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (rawText) {
+            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            return res.status(200).json(parsed);
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[${model}] 回傳非 200: ${response.status}`, errText);
+          lastError = `[${model}] (${response.status}) ${errText}`;
+          // 若為 429（頻率限制）或 503，自動嘗試下一個備援模型
+          if (response.status === 429 || response.status === 503) {
+            continue;
+          }
+        }
+      } catch (callErr) {
+        lastError = `[${model}] 例外: ${callErr.message}`;
+      }
+    }
+
+    return res.status(502).json({
+      error: 'Google API 辨識失敗',
+      details: lastError || '所有候選模型皆無法回應'
     });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`Gemini API 回傳錯誤: ${response.status}`, errText);
-      return res.status(response.status).json({
-        error: `Google API 錯誤 (${response.status})`,
-        details: errText
-      });
-    }
-
-    const resData = await response.json();
-    const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      return res.status(200).json({
-        company: '',
-        name: '',
-        addresses: [],
-        email: ''
-      });
-    }
-
-    // 清理 markdown 標記確保 JSON.parse 100% 成功
-    const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
-
-    return res.status(200).json(parsed);
 
   } catch (error) {
     console.error('後端處理例外:', error);
