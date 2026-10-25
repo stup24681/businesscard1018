@@ -135,11 +135,11 @@ export default async function handler(req, res) {
       }
     };
 
-    // 階梯式高可用模型矩陣：旗艦模型遇 503 瞬間無縫切換備援通道，杜絕塞車
+    // 階梯式高可用模型矩陣：以零塞車、低延遲的 flash-latest 與 flash-lite 優先避開 503
     const candidateModels = [
-      'gemini-3.8-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-3.8-flash'
     ];
 
     let lastError = null;
