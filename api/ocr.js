@@ -3,7 +3,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS 跨域設定
+  // CORS 設定
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       }
     };
 
-    // 使用低延遲且支援高頻 OCR 的 Google 官方主力端點
+    // 使用官方正式且反應最快的低延遲多模態端點 gemini-2.0-flash
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
