@@ -128,37 +128,51 @@ export default async function handler(req, res) {
       }
     };
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 依序嘗試 Google 官方目前要求與支援的模型
+    const candidateModels = [
+      'gemini-3.8-flash',
+      'gemini-2.5-flash'
+    ];
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(payload)
+    let lastError = null;
+
+    for (const model of candidateModels) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (rawText) {
+            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanJson);
+            return res.status(200).json(parsed);
+          }
+        } else {
+          const errText = await response.text();
+          console.error(`Gemini API [${model}] 回傳錯誤 (${response.status}):`, errText);
+          lastError = errText;
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
+
+    // 若所有模型皆失敗，回傳具體錯誤訊息
+    return res.status(500).json({
+      error: 'Google API 呼叫失敗',
+      details: lastError
     });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`Gemini API 回傳錯誤 (${response.status}):`, errText);
-      return res.status(response.status).json({
-        error: `Google API 錯誤 (${response.status})`,
-        details: errText
-      });
-    }
-
-    const resData = await response.json();
-    const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      return res.status(500).json({ error: '模型未回傳文字內容' });
-    }
-
-    const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
-
-    return res.status(200).json(parsed);
 
   } catch (error) {
     console.error('後端 OCR 處理失敗:', error);
