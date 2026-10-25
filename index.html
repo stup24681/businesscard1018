@@ -591,7 +591,8 @@
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.details || errData.error || `HTTP ${response.status}`);
+          const errMsg = errData.details || errData.error || `HTTP ${response.status}`;
+          throw new Error(errMsg);
         }
 
         const results = await response.json();
