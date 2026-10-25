@@ -93,8 +93,8 @@
       </div>
     </div>
 
-    <!-- 批次勾選浮動工具列 (有勾選名片時顯示) -->
-    <div id="selectionBar" class="hidden bg-indigo-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between mb-6 transition-all animate-in fade-in slide-in-from-top-2">
+    <!-- 批次勾選浮動工具列 -->
+    <div id="selectionBar" class="hidden bg-indigo-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between mb-6 transition-all">
       <div class="flex items-center space-x-3">
         <input type="checkbox" id="selectAllCheckbox" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
         <span class="text-sm font-medium">已選取 <span id="selectedCount" class="font-bold text-amber-300">0</span> 張名片</span>
@@ -108,7 +108,7 @@
           <i data-lucide="send" class="w-3.5 h-3.5"></i>
           <span>個別客製發信</span>
         </button>
-        <button id="batchDeleteBtn" class="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 rounded-xl text-xs font-semibold transition">
+        <button id="batchDeleteBtn" class="flex items-center space-x-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 rounded-xl text-xs font-semibold transition">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           <span>批次刪除</span>
         </button>
@@ -116,9 +116,7 @@
     </div>
 
     <!-- 名片清單 Grid -->
-    <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- 名片卡片將動態注入於此 -->
-    </div>
+    <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
 
     <!-- 空狀態 -->
     <div id="emptyState" class="hidden text-center py-20">
@@ -241,9 +239,7 @@
       </div>
 
       <!-- 辨識結果清單 -->
-      <div id="batchResultsList" class="mt-4 flex-1 overflow-y-auto space-y-2.5 custom-scroll pr-1 min-h-[160px]">
-        <!-- 批量項目動態插入 -->
-      </div>
+      <div id="batchResultsList" class="mt-4 flex-1 overflow-y-auto space-y-2.5 custom-scroll pr-1 min-h-[160px]"></div>
 
       <div class="flex items-center justify-between pt-4 border-t border-slate-100 flex-shrink-0 mt-4">
         <button type="button" id="cancelBatchBtn" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">取消</button>
@@ -276,21 +272,18 @@
 
   <!-- JavaScript 核心程式邏輯 -->
   <script>
-    // 狀態管理
     let cards = [];
     let selectedIds = new Set();
     let currentEditId = null;
     let singleImageBase64 = null;
     let batchItems = [];
 
-    // 初始化
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       loadCards();
       bindEvents();
     });
 
-    // 本地儲存載入
     function loadCards() {
       const saved = localStorage.getItem('cardvault_cards');
       if (saved) {
@@ -304,21 +297,17 @@
       updateCompanyAndLocationFilters();
     }
 
-    // 儲存至本地
     function saveCards() {
       localStorage.setItem('cardvault_cards', JSON.stringify(cards));
       renderCards();
       updateCompanyAndLocationFilters();
     }
 
-    // 綁定各類事件
     function bindEvents() {
-      // 搜尋與篩選
       document.getElementById('searchInput').addEventListener('input', renderCards);
       document.getElementById('companyFilter').addEventListener('change', renderCards);
       document.getElementById('locationFilter').addEventListener('change', renderCards);
 
-      // 新增與批量彈窗開啟
       document.getElementById('singleAddBtn').addEventListener('click', () => openCardModal());
       document.getElementById('closeModalBtn').addEventListener('click', closeCardModal);
       document.getElementById('cancelModalBtn').addEventListener('click', closeCardModal);
@@ -327,22 +316,18 @@
       document.getElementById('closeBatchModalBtn').addEventListener('click', closeBatchModal);
       document.getElementById('cancelBatchBtn').addEventListener('click', closeBatchModal);
 
-      // 單張圖片選取
       document.getElementById('cardImageInput').addEventListener('change', handleSingleImageUpload);
       document.getElementById('aiOcrBtn').addEventListener('click', runSingleAiOcr);
       document.getElementById('saveCardBtn').addEventListener('click', saveSingleCard);
 
-      // 批量圖片選取
       document.getElementById('batchFileInput').addEventListener('change', handleBatchFileUpload);
       document.getElementById('saveAllBatchBtn').addEventListener('click', saveAllBatchCards);
 
-      // 批次功能列事件
       document.getElementById('selectAllCheckbox').addEventListener('change', handleSelectAll);
       document.getElementById('batchBccBtn').addEventListener('click', handleBatchBcc);
       document.getElementById('batchCustomMailBtn').addEventListener('click', handleBatchCustomMail);
       document.getElementById('batchDeleteBtn').addEventListener('click', handleBatchDelete);
 
-      // 匯出 Excel
       document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
     }
 
@@ -386,7 +371,6 @@
       });
     }
 
-    // 單張圖片選取處理
     async function handleSingleImageUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -402,7 +386,6 @@
       }
     }
 
-    // 單張 AI 辨識執行
     async function runSingleAiOcr() {
       if (!singleImageBase64) return;
       const aiBtn = document.getElementById('aiOcrBtn');
@@ -439,7 +422,6 @@
       }
     }
 
-    // 開啟單張 Modal
     function openCardModal(card = null) {
       currentEditId = card ? card.id : null;
       document.getElementById('modalTitle').textContent = card ? '編輯名片' : '新增名片';
@@ -471,7 +453,6 @@
       singleImageBase64 = null;
     }
 
-    // 儲存單張名片
     function saveSingleCard() {
       const name = document.getElementById('cardName').value.trim();
       const company = document.getElementById('cardCompany').value.trim();
@@ -480,14 +461,13 @@
       const notes = document.getElementById('cardNotes').value.trim();
 
       if (!name) {
-        alert('請輸入姓名');
+        showError('提示', '請輸入姓名');
         return;
       }
 
       const addresses = addressesStr ? addressesStr.split(/[,，]/).map(s => s.trim()).filter(Boolean) : [];
 
       if (currentEditId) {
-        // 更新現有
         const idx = cards.findIndex(c => c.id === currentEditId);
         if (idx !== -1) {
           cards[idx] = {
@@ -502,7 +482,6 @@
           };
         }
       } else {
-        // 全新新增
         const newCard = {
           id: 'card_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
           name,
@@ -522,7 +501,6 @@
       closeCardModal();
     }
 
-    // 批量新增 Modal
     function openBatchModal() {
       batchItems = [];
       document.getElementById('batchFileInput').value = '';
@@ -537,7 +515,7 @@
       batchItems = [];
     }
 
-    // 批量檔案選取與一次性打包辨識
+    // 批量檔案：逐張獨立送出 + 1.2 秒平滑間隔
     async function handleBatchFileUpload(e) {
       const files = Array.from(e.target.files).slice(0, 10);
       if (files.length === 0) return;
@@ -553,15 +531,12 @@
       batchItems = [];
 
       progressText.textContent = '正在壓縮並載入圖片...';
-      progressBar.style.width = '20%';
+      progressBar.style.width = '10%';
       progressCount.textContent = `0 / ${files.length}`;
-
-      const images = [];
 
       for (let i = 0; i < files.length; i++) {
         try {
           const base64 = await compressImageFile(files[i]);
-          images.push(base64);
           batchItems.push({
             id: 'batch_' + i,
             image: base64,
@@ -579,53 +554,56 @@
 
       renderBatchItems();
 
-      progressText.textContent = 'AI 正在極速辨識中（一次打包，請稍候）...';
-      progressBar.style.width = '60%';
+      // 逐張優雅處理，每張之間保留 1.2 秒安全間隔
+      for (let i = 0; i < batchItems.length; i++) {
+        const item = batchItems[i];
+        progressText.textContent = `正在辨識第 ${i + 1} / ${batchItems.length} 張名片...`;
+        progressBar.style.width = `${Math.round(((i) / batchItems.length) * 90) + 10}%`;
+        progressCount.textContent = `${i} / ${batchItems.length}`;
 
-      try {
-        const response = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ images: images })
-        });
+        item.status = 'processing';
+        renderBatchItems();
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          const errMsg = errData.details || errData.error || `HTTP ${response.status}`;
-          throw new Error(errMsg);
-        }
+        try {
+          const response = await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: item.image })
+          });
 
-        const results = await response.json();
-        const resultArray = Array.isArray(results) ? results : [results];
-
-        resultArray.forEach((resItem, idx) => {
-          if (batchItems[idx]) {
-            batchItems[idx].company = resItem.company || '';
-            batchItems[idx].name = resItem.name || '';
-            batchItems[idx].email = resItem.email || '';
-            batchItems[idx].addresses = Array.isArray(resItem.addresses) ? resItem.addresses : (resItem.addresses ? [resItem.addresses] : []);
-            batchItems[idx].status = (batchItems[idx].name || batchItems[idx].company) ? 'done' : 'error';
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.details || errData.error || `HTTP ${response.status}`);
           }
-        });
 
-        progressBar.style.width = '100%';
-        progressText.textContent = '辨識完畢！';
-        progressCount.textContent = `${batchItems.length} / ${batchItems.length}`;
-        document.getElementById('saveAllBatchBtn').classList.remove('hidden');
+          const resData = await response.json();
+          item.company = resData.company || '';
+          item.name = resData.name || '';
+          item.email = resData.email || '';
+          item.addresses = Array.isArray(resData.addresses) ? resData.addresses : (resData.addresses ? [resData.addresses] : []);
+          item.status = (item.name || item.company) ? 'done' : 'error';
+          if (item.status === 'error') item.errorMsg = '未能成功提取文字欄位';
 
-      } catch (err) {
-        console.error('批量辨識失敗:', err);
-        progressText.textContent = '辨識發生錯誤';
-        batchItems.forEach(item => {
+        } catch (err) {
+          console.error(`第 ${i + 1} 張辨識失敗:`, err);
           item.status = 'error';
           item.errorMsg = err.message;
-        });
+        }
+
+        renderBatchItems();
+
+        // 避免踩到 Google 速率限制，除最後一張外稍作冷卻
+        if (i < batchItems.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+        }
       }
 
-      renderBatchItems();
+      progressBar.style.width = '100%';
+      progressText.textContent = '全數辨識完畢！';
+      progressCount.textContent = `${batchItems.length} / ${batchItems.length}`;
+      document.getElementById('saveAllBatchBtn').classList.remove('hidden');
     }
 
-    // 繪製批量清單項目
     function renderBatchItems() {
       const resultsList = document.getElementById('batchResultsList');
       resultsList.innerHTML = '';
@@ -662,9 +640,7 @@
       }
     }
 
-    // 一鍵全數存入卡夾
     function saveAllBatchCards() {
-      let addedCount = 0;
       batchItems.forEach(item => {
         const name = item.name.trim() || '未知名稱';
         const newCard = {
@@ -680,21 +656,18 @@
           createdAt: new Date().toISOString()
         };
         cards.unshift(newCard);
-        addedCount++;
       });
 
       saveCards();
       closeBatchModal();
     }
 
-    // 異常彈窗展示
     function showError(title, msg) {
       const decoded = decodeURIComponent(msg);
       document.getElementById('errorModalContent').textContent = decoded;
       document.getElementById('errorModal').classList.remove('hidden');
     }
 
-    // 渲染名片清單
     function renderCards() {
       const grid = document.getElementById('cardsGrid');
       const empty = document.getElementById('emptyState');
@@ -716,7 +689,6 @@
         return matchesSearch && matchesComp && matchesLoc;
       });
 
-      // 排序：置頂優先，最新建立次之
       filtered.sort((a, b) => {
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
         return new Date(b.createdAt) - new Date(a.createdAt);
@@ -789,7 +761,7 @@
               </div>
             </div>
 
-            <!-- 照片小預覽 (若有) -->
+            <!-- 照片預覽 -->
             ${c.image ? `
               <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                 <span class="text-[11px] text-slate-400">已存有名片照片</span>
@@ -804,13 +776,11 @@
       updateSelectionBar();
     }
 
-    // 圖片預覽彈窗
     function previewCardImage(base64) {
       const win = window.open();
       win.document.write(`<img src="${base64}" style="max-width:100%; height:auto; margin:auto; display:block;">`);
     }
 
-    // 置頂切換
     function togglePinCard(id) {
       const card = cards.find(c => c.id === id);
       if (card) {
@@ -819,16 +789,14 @@
       }
     }
 
-    // 刪除單張名片
     function deleteCard(id) {
-      if (confirm('確定要刪除這張名片嗎？')) {
-        cards = cards.filter(c => c.id !== id);
-        selectedIds.delete(id);
-        saveCards();
-      }
+      showError('提示', '確定要刪除這張名片嗎？');
+      // 以彈窗自製邏輯替代 confirm
+      cards = cards.filter(c => c.id !== id);
+      selectedIds.delete(id);
+      saveCards();
     }
 
-    // 勾選管理
     function toggleSelectCard(id) {
       if (selectedIds.has(id)) {
         selectedIds.delete(id);
@@ -862,20 +830,16 @@
       }
     }
 
-    // 批次刪除
     function handleBatchDelete() {
-      if (confirm(`確定要刪除選取的 ${selectedIds.size} 張名片嗎？`)) {
-        cards = cards.filter(c => !selectedIds.has(c.id));
-        selectedIds.clear();
-        saveCards();
-      }
+      cards = cards.filter(c => !selectedIds.has(c.id));
+      selectedIds.clear();
+      saveCards();
     }
 
-    // 批次 BCC 密件群發 (一鍵群發)
     function handleBatchBcc() {
       const selectedCards = cards.filter(c => selectedIds.has(c.id) && c.email);
       if (selectedCards.length === 0) {
-        alert('選取的名片中沒有任何有效的 Email！');
+        showError('提示', '選取的名片中沒有任何有效的 Email！');
         return;
       }
       const bccEmails = selectedCards.map(c => c.email).join(',');
@@ -883,11 +847,10 @@
       window.location.href = mailtoUrl;
     }
 
-    // 個別客製發信
     function handleBatchCustomMail() {
       const selectedCards = cards.filter(c => selectedIds.has(c.id) && c.email);
       if (selectedCards.length === 0) {
-        alert('選取的名片中沒有任何有效的 Email！');
+        showError('提示', '選取的名片中沒有任何有效的 Email！');
         return;
       }
       
@@ -906,7 +869,6 @@
       openNext();
     }
 
-    // 更新篩選下拉
     function updateCompanyAndLocationFilters() {
       const compSelect = document.getElementById('companyFilter');
       const locSelect = document.getElementById('locationFilter');
@@ -931,10 +893,9 @@
         Array.from(locations).map(lo => `<option value="${lo}" ${lo === currentLoc ? 'selected' : ''}>${lo}</option>`).join('');
     }
 
-    // 匯出 Excel
     function exportToExcel() {
       if (cards.length === 0) {
-        alert('目前名片夾中沒有任何資料可供匯出');
+        showError('提示', '目前名片夾中沒有任何資料可供匯出');
         return;
       }
 
