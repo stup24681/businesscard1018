@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
   if (!apiKey) {
     return res.status(500).json({
-      error: '伺服器未讀取到 GEMINI_API_KEY，請確認已在 Vercel 環境變數中設定。'
+      error: '伺服器未讀取到 GEMINI_API_KEY，請確認 Vercel 環境變數已正確設定。'
     });
   }
 
@@ -39,17 +39,17 @@ export default async function handler(req, res) {
   try {
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-    const promptText = `你是一個專業的名片 OCR 資料擷取助理。請仔細分析這張名片影像，提取四大核心資訊並輸出為 JSON：
-1. company: 公司名稱（機構名稱）
+    const promptText = `請分析這張名片圖片，精確提取四大核心資訊並輸出為 JSON：
+1. company: 公司或機構全稱
 2. name: 聯絡人姓名
-3. addresses: 公司地址或地點陣列（若名片有多個地址或分公司請全部列出，若只有一個請放單一元素陣列）
+3. addresses: 公司地點或地址陣列（若有多筆請全部列出）
 4. email: 電子信箱
 
 注意：
-- 僅根據圖片中實際出現的字樣提取，絕對不要猜測或虛構。
-- 若無該資訊，字串請給空字串 ""，陣列請給空陣列 []。`;
+- 僅根據圖片中實際出現的字樣提取，絕對不可自行捏造或猜測。
+- 無該資訊請留空字串 "" 或空陣列 []。`;
 
-    // 建立標準 Gemini Vision Payload
+    // 核心優化：thinkingBudget = 0 關閉思維鏈推導，單張極速在 1~2 秒內完成
     const payload = {
       contents: [
         {
@@ -68,6 +68,10 @@ export default async function handler(req, res) {
       ],
       generationConfig: {
         temperature: 0,
+        maxOutputTokens: 500,
+        thinkingConfig: {
+          thinkingBudget: 0
+        },
         responseMimeType: "application/json",
         responseSchema: {
           type: "OBJECT",
@@ -85,55 +89,58 @@ export default async function handler(req, res) {
       }
     };
 
-    // 依序嘗試：主力驗證成功的 gemini-2.5-flash，若遇限額則切換 gemini-1.5-flash 備援
-    const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
-    let lastError = null;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    for (const model of models) {
-      try {
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    // 自動重試一次（專門防禦偶發性 429 / 503）
+    let response;
+    let attempts = 0;
+    while (attempts < 2) {
+      attempts++;
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify(payload)
+      });
 
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-          const resData = await response.json();
-          const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-          if (rawText) {
-            const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanJson);
-            return res.status(200).json(parsed);
-          }
-        } else {
-          const errText = await response.text();
-          console.warn(`[${model}] 回傳非 200: ${response.status}`, errText);
-          lastError = `[${model}] (${response.status}) ${errText}`;
-          // 若為 429（頻率限制）或 503，自動嘗試下一個備援模型
-          if (response.status === 429 || response.status === 503) {
-            continue;
-          }
-        }
-      } catch (callErr) {
-        lastError = `[${model}] 例外: ${callErr.message}`;
+      if (response.ok) {
+        break;
       }
+
+      if ((response.status === 429 || response.status === 503) && attempts < 2) {
+        // 若遇頻率限制，在後端平靜等待 2.5 秒後重試一次
+        await new Promise(r => setTimeout(r, 2500));
+        continue;
+      }
+      break;
     }
 
-    return res.status(502).json({
-      error: 'Google API 辨識失敗',
-      details: lastError || '所有候選模型皆無法回應'
-    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Gemini API 回傳錯誤 (${response.status}):`, errText);
+      return res.status(response.status).json({
+        error: `Google API 錯誤 (${response.status})`,
+        details: errText
+      });
+    }
+
+    const resData = await response.json();
+    const rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      return res.status(500).json({ error: '模型未回傳辨識內容' });
+    }
+
+    const cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    return res.status(200).json(parsed);
 
   } catch (error) {
-    console.error('後端處理例外:', error);
+    console.error('OCR 處理例外:', error);
     return res.status(500).json({
-      error: '後端辨識處理失敗',
+      error: '伺服器辨識異常',
       details: error.message
     });
   }
