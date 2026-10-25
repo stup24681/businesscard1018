@@ -135,9 +135,11 @@ export default async function handler(req, res) {
       }
     };
 
-    // 鎖定官方指定升級的新世代模型
+    // 階梯式高可用模型矩陣：旗艦模型遇 503 瞬間無縫切換備援通道，杜絕塞車
     const candidateModels = [
-      'gemini-3.8-flash'
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+      'gemini-3.1-flash-lite'
     ];
 
     let lastError = null;
@@ -166,8 +168,9 @@ export default async function handler(req, res) {
           }
         } else {
           const errText = await response.text();
-          console.error(`Gemini API [${model}] 回傳錯誤 (${response.status}):`, errText);
+          console.warn(`Gemini API [${model}] 回應非 200 (${response.status})，嘗試備援通道:`, errText);
           lastError = errText;
+          // 若遇 503 (high demand) 或 429，立即繼續 for 迴圈嘗試下一個模型
         }
       } catch (e) {
         lastError = e.message;
