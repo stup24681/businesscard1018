@@ -1034,14 +1034,14 @@
         batchItemsList.innerHTML = '';
         batchProgressWrapper.classList.remove('hidden');
 
-        // Stage 1: Client Compression
+        // Stage 1: 前端快速壓縮圖片（每張約 80KB，文字極清晰）
         for (let i = 0; i < files.length; i++) {
           batchProgressText.textContent = `載入圖片中 (${i + 1}/${files.length})...`;
-          batchProgressBar.style.width = `${Math.round(((i + 1) / files.length) * 35)}%`;
+          batchProgressBar.style.width = `${Math.round(((i + 1) / files.length) * 40)}%`;
           batchProgressCount.textContent = `${i + 1} / ${files.length}`;
 
           try {
-            const base64 = await compressImageFile(files[i], 1600, 0.88);
+            const base64 = await compressImageFile(files[i], 1200, 0.82);
             const item = {
               id: 'batch_' + Date.now() + '_' + i,
               image: base64,
@@ -1062,7 +1062,7 @@
               <input type="text" placeholder="姓名" class="batch-name w-1/5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
               <input type="text" placeholder="地址" class="batch-addr w-1/4 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
               <input type="text" placeholder="Email" class="batch-email flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
-              <div class="batch-status shrink-0 text-slate-400 font-medium px-1">排隊中</div>
+              <div class="batch-status shrink-0 text-slate-400 font-medium px-1">準備中</div>
             `;
             batchItemsList.appendChild(row);
           } catch (err) {
@@ -1070,31 +1070,60 @@
           }
         }
 
-        // Stage 2: 逐張呼叫後端秒速辨識
-        for (let i = 0; i < batchQueue.length; i++) {
-          const item = batchQueue[i];
+        if (batchQueue.length === 0) return;
+
+        // Stage 2: 一次打包所有圖片，只發送單一一次請求給後端！
+        batchProgressText.textContent = `AI 正在全數辨識中 (共 ${batchQueue.length} 張名片，僅需 1 次請求)...`;
+        batchProgressBar.style.width = '70%';
+
+        // 將所有名片狀態標示為辨識中
+        batchQueue.forEach(item => {
           const row = document.getElementById(`batchRow_${item.id}`);
-          const statusEl = row ? row.querySelector('.batch-status') : null;
+          if (row) {
+            const statusEl = row.querySelector('.batch-status');
+            if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-bold">辨識中...</span>';
+          }
+        });
 
-          batchProgressText.textContent = `正在辨識第 ${i + 1} / ${batchQueue.length} 張名片...`;
-          batchProgressBar.style.width = `${35 + Math.round(((i + 1) / batchQueue.length) * 65)}%`;
-          batchProgressCount.textContent = `${i + 1} / ${batchQueue.length}`;
+        try {
+          const payloadImages = batchQueue.map(item => item.image);
 
-          if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-bold">辨識中...</span>';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-          try {
-            const ocr = await requestOcr(item.image);
+          const response = await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images: payloadImages }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.details || errData.error || `伺服器回應錯誤 (${response.status})`);
+          }
+
+          const results = await response.json();
+          const resultArray = Array.isArray(results) ? results : [results];
+
+          // 將結果一一對應填回輸入框
+          batchQueue.forEach((item, idx) => {
+            const ocr = resultArray[idx] || {};
             item.company = ocr.company || '';
             item.name = ocr.name || '';
             item.addresses = ocr.addresses || [];
             item.email = ocr.email || '';
 
+            const row = document.getElementById(`batchRow_${item.id}`);
             if (row) {
               row.querySelector('.batch-comp').value = item.company;
               row.querySelector('.batch-name').value = item.name;
-              row.querySelector('.batch-addr').value = item.addresses.join('; ');
+              row.querySelector('.batch-addr').value = (item.addresses || []).join('; ');
               row.querySelector('.batch-email').value = item.email;
 
+              const statusEl = row.querySelector('.batch-status');
               const hasAny = item.company || item.name || (item.addresses && item.addresses.length > 0) || item.email;
               if (hasAny) {
                 statusEl.innerHTML = '<span class="text-emerald-600 font-bold">✓ 完成</span>';
@@ -1102,21 +1131,28 @@
                 statusEl.innerHTML = '<span class="text-amber-500 font-medium">查無文字</span>';
               }
             }
-          } catch (e) {
-            console.error(`第 ${i + 1} 張辨識失敗:`, e);
-            const cleanErr = (e.message || '辨識失敗').replace(/"/g, '&quot;');
-            if (statusEl) {
-              statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
-            }
-          }
+          });
 
-          // 核心保護：若還有下一張名片，安全冷卻等待 2 秒，徹底規避 Google API 429 速率限制
-          if (i < batchQueue.length - 1) {
-            await new Promise(r => setTimeout(r, 2000));
-          }
+          batchProgressText.textContent = `全部 ${batchQueue.length} 張名片辨識完畢！`;
+          batchProgressBar.style.width = '100%';
+          showToast(`成功辨識 ${batchQueue.length} 張名片！`, 'success');
+
+        } catch (err) {
+          console.error('批量辨識異常:', err);
+          const cleanErr = (err.message || '辨識失敗').replace(/"/g, '&quot;');
+          batchQueue.forEach(item => {
+            const row = document.getElementById(`batchRow_${item.id}`);
+            if (row) {
+              const statusEl = row.querySelector('.batch-status');
+              if (statusEl) {
+                statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
+              }
+            }
+          });
+          batchProgressText.textContent = '辨識發生錯誤';
+          window.showErrorModal(err.message || '辨識失敗');
         }
 
-        batchProgressText.textContent = '辨識完畢！';
         batchFilesInput.value = '';
       });
 
