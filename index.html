@@ -656,8 +656,8 @@
       updateCompanyAndLocationFilters();
     }
 
-    // 高品質名片縮圖：長邊 1280px，體積僅 ~100KB，傳輸只需 0.1 秒，字體極度清晰
-    async function compressImageFile(file, maxDimension = 1280, quality = 0.82) {
+    // 高品質名片縮圖：長邊 1200px，體積僅約 80KB~150KB，傳輸只需 0.1 秒，字體極度清晰
+    async function compressImageFile(file, maxDimension = 1200, quality = 0.80) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onerror = reject;
