@@ -1,10 +1,9 @@
 export const config = {
-  maxDuration: 60, // 解除 Vercel 10 秒限制，確保充裕辨識時間
+  maxDuration: 60,
 };
 
 export default async function handler(req, res) {
-  // 設定 CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader(
@@ -16,15 +15,14 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // 讀取 Vercel 設定的金鑰
   const apiKey = (process.env.GEMINI_API_KEY || '').trim();
 
-  // 1. GET 診斷檢查端點
+  // 診斷端點：瀏覽器直接開啟可檢查狀態
   if (req.method === 'GET') {
     return res.status(200).json({
       status: 'ok',
       hasApiKey: !!apiKey,
-      message: apiKey ? '後端運作正常，金鑰已載入！' : '尚未在 Vercel 設定 GEMINI_API_KEY'
+      prefix: apiKey ? apiKey.substring(0, 8) + '...' : '未設定'
     });
   }
 
@@ -33,9 +31,7 @@ export default async function handler(req, res) {
   }
 
   if (!apiKey) {
-    return res.status(500).json({ 
-      error: '伺服器未讀取到 GEMINI_API_KEY，請確認 Vercel 環境變數已設定！' 
-    });
+    return res.status(500).json({ error: '伺服器未讀取到 GEMINI_API_KEY 環境變數' });
   }
 
   const { image } = req.body || {};
@@ -44,26 +40,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 移除 base64 前綴
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    // 提取圖片的 mimeType 與純 base64 資料
+    let mimeType = 'image/jpeg';
+    let base64Data = image;
 
-    const promptText = `請分析這張名片圖片，精確提取下列四項資訊：
-1. company: 公司名稱
-2. name: 姓名（不含職稱）
-3. addresses: 公司地點/地址（字串陣列，若有多個地點請全部列出）
-4. email: 電子信箱
+    const mimeMatch = image.match(/^data:([^;]+);base64,/);
+    if (mimeMatch) {
+      mimeType = mimeMatch[1];
+      base64Data = image.replace(/^data:[^;]+;base64,/, '');
+    }
 
-嚴格規定：
-- 若無法辨識該欄位，請保留為空字串或空陣列，不可自行捏造。
-- 請直接回傳符合 JSON 格式的內容，不要包含額外文字。`;
+    const promptText = `你是一個專業的名片 OCR 擷取專家。請分析這張名片圖片，精確擷取下列 4 項繁體中文或英文資訊，並嚴格只回傳 JSON 格式（不要包含任何 markdown 或解說）：
+{
+  "company": "公司名稱（若無則為空字串）",
+  "name": "聯絡人姓名（不含職稱，若無則為空字串）",
+  "addresses": ["公司地址或地點（若有多個請全部列入陣列，若無則為空陣列）"],
+  "email": "電子郵件（若無則為空字串）"
+}`;
 
+    // 符合 Google 官方 REST API 的標準 Payload (同時支援 inline_data 與 inlineData)
     const payload = {
       contents: [
         {
           parts: [
             {
-              inlineData: {
-                mimeType: 'image/jpeg',
+              inline_data: {
+                mime_type: mimeType,
                 data: base64Data
               }
             },
@@ -75,39 +77,49 @@ export default async function handler(req, res) {
       ],
       generationConfig: {
         temperature: 0.1,
-        responseMimeType: 'application/json'
+        responseMimeType: "application/json"
       }
     };
 
-    // 呼叫 Google 官方 Gemini 2.5 Flash 端點
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // 優先使用您帳號已經通過驗證的官方模型
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-flash-latest'];
+    let lastError = null;
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify(payload)
-    });
+    for (const model of modelsToTry) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: JSON.stringify(payload)
+        });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Google API 報錯:', response.status, errText);
-      return res.status(502).json({
-        error: `Google API 回應錯誤 (${response.status})`,
-        details: errText
-      });
+        if (response.ok) {
+          const data = await response.json();
+          let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+          // 清理可能的 markdown 標籤
+          rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(rawText);
+          return res.status(200).json(parsed);
+        } else {
+          const errText = await response.text();
+          console.error(`模型 [${model}] 回傳錯誤:`, response.status, errText);
+          lastError = `[${model}] (${response.status}) ${errText}`;
+        }
+      } catch (e) {
+        lastError = `[${model}] 例外: ${e.message}`;
+      }
     }
 
-    const data = await response.json();
-    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const parsed = JSON.parse(text);
-
-    return res.status(200).json(parsed);
+    return res.status(502).json({
+      error: 'Google API 辨識失敗',
+      details: lastError
+    });
   } catch (err) {
-    console.error('後端辨識例外:', err);
+    console.error('後端異常:', err);
     return res.status(500).json({ error: err.message || '後端伺服器內部錯誤' });
   }
 }
