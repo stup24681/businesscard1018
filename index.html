@@ -3,7 +3,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS 設定
+  // CORS 跨域設定
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   if (!apiKey) {
-    return res.status(500).json({ error: '未偵測到 GEMINI_API_KEY，請在 Vercel 後台設定' });
+    return res.status(500).json({ error: '伺服器未設定 GEMINI_API_KEY，請至 Vercel 後台 Environment Variables 設定' });
   }
 
   const { image } = req.body || {};
@@ -33,7 +33,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. 拆解 base64 與 mimeType
     let mimeType = 'image/jpeg';
     const mimeMatch = image.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
     if (mimeMatch) {
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
     }
     const base64Data = image.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
 
-    // 2. 嚴格提取四大核心資訊的 Prompt
     const promptText = `請以專業 OCR 角度精確辨識此名片，提取以下四項資訊並以 JSON 回傳：
 1. company: 公司全名（繁體中文優先）
 2. name: 聯絡人姓名（不含職稱）
@@ -86,7 +84,7 @@ export default async function handler(req, res) {
       }
     };
 
-    // 3. 使用 Google 官方正式且反應最快的低延遲多模態端點 gemini-2.0-flash
+    // 使用低延遲且支援高頻 OCR 的 Google 官方主力端點
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
