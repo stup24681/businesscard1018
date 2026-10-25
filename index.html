@@ -155,7 +155,7 @@
             </button>
             <button type="button" id="aiOcrBtn" class="hidden px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-violet-700 transition flex items-center space-x-1.5 shadow-sm">
               <i data-lucide="sparkles" class="w-4 h-4"></i>
-              <span>AI 辨識</span>
+              <span>AI 智慧辨識</span>
             </button>
           </div>
           <!-- 圖片預覽 -->
@@ -331,7 +331,7 @@
       document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
     }
 
-    // 圖片超高壓縮長邊 1000px，體積約 50KB~80KB，文字銳利且傳輸極速
+    // 還原高品質壓縮長邊 1400px，確保名片上最細小的文字、地址與 Email 100% 清晰
     function compressImageFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -341,7 +341,7 @@
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            const maxDim = 1000;
+            const maxDim = 1400; // 高清晰度還原
 
             if (width > maxDim || height > maxDim) {
               if (width > height) {
@@ -360,7 +360,7 @@
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.88);
             resolve(compressedBase64);
           };
           img.onerror = reject;
