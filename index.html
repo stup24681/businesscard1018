@@ -1082,33 +1082,49 @@
 
           if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-bold">辨識中...</span>';
 
-          try {
-            const ocr = await requestOcr(item.image);
-            item.company = ocr.company || '';
-            item.name = ocr.name || '';
-            item.addresses = ocr.addresses || [];
-            item.email = ocr.email || '';
+          let success = false;
+          let retryCount = 0;
 
-            if (row) {
-              row.querySelector('.batch-comp').value = item.company;
-              row.querySelector('.batch-name').value = item.name;
-              row.querySelector('.batch-addr').value = item.addresses.join('; ');
-              row.querySelector('.batch-email').value = item.email;
+          // 支援 1 次速率超限自動重試
+          while (!success && retryCount < 2) {
+            try {
+              const ocr = await requestOcr(item.image);
+              item.company = ocr.company || '';
+              item.name = ocr.name || '';
+              item.addresses = ocr.addresses || [];
+              item.email = ocr.email || '';
 
-              const hasAny = item.company || item.name || (item.addresses && item.addresses.length > 0) || item.email;
-              if (hasAny) {
-                statusEl.innerHTML = '<span class="text-emerald-600 font-bold">✓ 完成</span>';
+              if (row) {
+                row.querySelector('.batch-comp').value = item.company;
+                row.querySelector('.batch-name').value = item.name;
+                row.querySelector('.batch-addr').value = item.addresses.join('; ');
+                row.querySelector('.batch-email').value = item.email;
+
+                const hasAny = item.company || item.name || (item.addresses && item.addresses.length > 0) || item.email;
+                if (hasAny) {
+                  statusEl.innerHTML = '<span class="text-emerald-600 font-bold">✓ 完成</span>';
+                } else {
+                  statusEl.innerHTML = '<span class="text-amber-500 font-medium">查無文字</span>';
+                }
+              }
+              success = true;
+            } catch (e) {
+              retryCount++;
+              if (retryCount < 2) {
+                // 如果是頻率超限或網路抖動，等待 1.5 秒後重試一次
+                if (statusEl) statusEl.innerHTML = '<span class="text-amber-600 font-medium">重新嘗試中...</span>';
+                await new Promise(r => setTimeout(r, 1500));
               } else {
-                statusEl.innerHTML = '<span class="text-amber-500 font-medium">查無文字</span>';
+                const cleanErr = (e.message || '辨識失敗').replace(/"/g, '&quot;');
+                if (statusEl) {
+                  statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
+                }
               }
             }
-          } catch (e) {
-            const cleanErr = (e.message || '辨識失敗').replace(/"/g, '&quot;');
-            if (statusEl) {
-              statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
-            }
           }
-          await new Promise(r => setTimeout(r, 100));
+
+          // 每張辨識完成後，留出 800ms 平滑間隔，避免撞擊 Google 429 速率限制
+          await new Promise(r => setTimeout(r, 800));
         }
 
         batchProgressText.textContent = '辨識完畢！';
