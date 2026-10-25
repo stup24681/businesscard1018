@@ -1110,9 +1110,9 @@
             }
           }
 
-          // 核心關鍵：若還有下一張名片，平滑等待 1.5 秒，徹底避開 Google 免費額度 429 頻率限制
+          // 核心保護：若還有下一張名片，安全冷卻等待 2 秒，徹底規避 Google API 429 速率限制
           if (i < batchQueue.length - 1) {
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
 
