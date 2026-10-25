@@ -24,7 +24,7 @@
       scrollbar-width: none;
     }
     .glass-effect {
-      background: rgba(255, 255, 255, 0.88);
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(12px);
     }
   </style>
@@ -42,7 +42,7 @@
         <div class="min-w-0">
           <h1 class="text-base sm:text-lg font-bold text-slate-900 truncate flex items-center gap-2">
             智慧虛擬名片夾
-            <span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-mono font-semibold border border-indigo-200/60 hidden sm:inline">v2.6</span>
+            <span class="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-mono font-semibold border border-indigo-200/60 hidden sm:inline">v3.0 穩定版</span>
           </h1>
           <div class="flex items-center gap-2 text-xs text-slate-500">
             <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -57,13 +57,7 @@
         <!-- Gmail Settings Button -->
         <button id="gmailConfigBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs sm:text-sm font-medium hover:bg-rose-100 transition shadow-2xs">
           <i data-lucide="mail" class="w-4 h-4 text-rose-600"></i>
-          <span class="hidden sm:inline">Gmail 設定</span>
-        </button>
-
-        <!-- Diagnostics Button -->
-        <button id="diagnosticsBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs sm:text-sm font-medium hover:bg-amber-100 transition shadow-2xs" title="檢視連線狀態與直連備援">
-          <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
-          <span class="hidden sm:inline">連線檢測</span>
+          <span class="hidden sm:inline">發送郵件</span>
         </button>
 
         <!-- Excel Export Button -->
@@ -194,7 +188,7 @@
               </button>
             </div>
             <div class="space-y-1.5 text-xs text-slate-500">
-              <p>支援手機直接拍照或選取照片。上傳後點擊「AI 辨識」，自動擷取四項核心資訊。</p>
+              <p>支援拍照或選取照片，點擊「AI 智慧辨識」，極速擷取四大核心資訊。</p>
               <button type="button" id="singleAiOcrBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white rounded-xl text-xs font-semibold transition shadow-xs">
                 <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
                 <span>AI 智慧辨識</span>
@@ -264,7 +258,7 @@
 
   <!-- 2. Batch Add Cards Modal -->
   <div id="batchModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 my-auto space-y-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-100 my-auto space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <h3 class="font-bold text-slate-900 text-base sm:text-lg flex items-center gap-2">
           <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i>
@@ -278,8 +272,8 @@
       <!-- Upload Trigger Zone -->
       <div id="batchDropZone" class="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 rounded-2xl p-6 text-center cursor-pointer transition">
         <i data-lucide="upload-cloud" class="w-10 h-10 text-indigo-500 mx-auto mb-2"></i>
-        <h4 class="font-bold text-slate-700 text-xs sm:text-sm">點擊選取或拖曳名片圖檔</h4>
-        <p class="text-[11px] text-slate-400 mt-1">支援拍照或圖檔，一次最多可處理 10 張照片</p>
+        <h4 class="font-bold text-slate-700 text-xs sm:text-sm">點擊選取名片圖檔 (可多選)</h4>
+        <p class="text-[11px] text-slate-400 mt-1">選取後系統將自動開始辨識，原汁原味超快速度</p>
         <button type="button" class="mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs pointer-events-none">
           選擇名片圖檔
         </button>
@@ -298,11 +292,11 @@
       </div>
 
       <!-- Batch Items Table / List -->
-      <div id="batchItemsList" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+      <div id="batchItemsList" class="space-y-2.5 max-h-80 overflow-y-auto pr-1"></div>
 
       <div class="flex items-center justify-between pt-3 border-t border-slate-100">
         <button type="button" id="cancelBatchModalBtn" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs sm:text-sm hover:bg-slate-50">取消</button>
-        <button type="button" id="saveAllBatchCardsBtn" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-indigo-200 disabled:opacity-50">一鍵全數存入卡夾</button>
+        <button type="button" id="saveAllBatchCardsBtn" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-sm shadow-indigo-200">一鍵全數存入卡夾</button>
       </div>
     </div>
   </div>
@@ -382,39 +376,7 @@
     </div>
   </div>
 
-  <!-- 4. Diagnostics & Direct Backup Modal -->
-  <div id="diagnosticsModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-          <i data-lucide="activity" class="w-5 h-5 text-indigo-600"></i>
-          AI 辨識連線狀態與直連備援
-        </h3>
-        <button id="closeDiagnosticsBtn" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-      <div class="space-y-2 text-xs">
-        <div class="p-3 bg-slate-50 rounded-xl space-y-1">
-          <div class="font-semibold text-slate-700">Vercel 後端狀態：</div>
-          <div id="diagServerStatus" class="text-slate-500 font-mono">尚未檢測</div>
-        </div>
-        <div class="p-3 bg-indigo-50/60 rounded-xl space-y-1.5 border border-indigo-100">
-          <div class="font-semibold text-indigo-900">⚡ 直連 Google Gemini 模式 (極速 1.5 秒 / 100% 繞過逾時)：</div>
-          <p class="text-[11px] text-indigo-700 leading-relaxed">
-            若 Vercel 後端出現「伺服器逾時」，填入您的 Gemini Key 即直接由瀏覽器直連 Google 官方，恢復最初秒速辨識！
-          </p>
-          <input type="password" id="directGeminiKeyInput" placeholder="填入 API Key (留空則使用 Vercel 後端)" class="w-full px-3 py-2 rounded-lg bg-white border border-indigo-200 text-xs font-mono focus:outline-hidden">
-        </div>
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button id="testConnectionBtn" class="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs hover:bg-slate-50">測試後端</button>
-        <button id="saveDirectKeyBtn" class="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700">儲存設定</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. Error Inspector Modal -->
+  <!-- 4. Error Inspector Modal -->
   <div id="errorInspectorModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-3">
       <div class="flex items-center justify-between pb-2 border-b border-rose-100 text-rose-600">
@@ -427,11 +389,8 @@
         </button>
       </div>
       <div class="space-y-2 text-xs">
-        <p class="text-slate-600">Google Gemini / 後端回傳了以下訊息：</p>
+        <p class="text-slate-600">伺服器回傳訊息：</p>
         <div id="errorInspectorContent" class="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-800 font-mono text-[11px] break-all max-h-40 overflow-y-auto"></div>
-        <div class="p-2.5 bg-amber-50 rounded-xl text-amber-800 text-[11px] leading-relaxed">
-          💡 <strong>排查建議：</strong> 若出現 429 或配額問題，請點擊上方「連線檢測」切換直連模式或更換 Gemini API Key！
-        </div>
       </div>
       <div class="flex justify-end pt-2">
         <button id="confirmErrorInspectorBtn" class="px-4 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-semibold">我知道了</button>
@@ -439,7 +398,7 @@
     </div>
   </div>
 
-  <!-- 6. Account Switcher Modal -->
+  <!-- 5. Account Switcher Modal -->
   <div id="accountModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-3">
       <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
@@ -461,7 +420,6 @@
   <script>
     const STORAGE_KEY_PREFIX = 'CARDVAULT_PERMANENT_DB_';
     const ACCOUNT_KEY = 'CARDVAULT_CURRENT_USER';
-    const DIRECT_KEY_STORAGE = 'CARDVAULT_DIRECT_GEMINI_KEY';
 
     let currentAccount = localStorage.getItem(ACCOUNT_KEY) || 'DefaultUser';
     let cards = [];
@@ -499,6 +457,188 @@
       document.getElementById('errorInspectorModal').classList.remove('hidden');
     };
 
+    function updateSelectionBar() {
+      const bar = document.getElementById('selectionBar');
+      const countEl = document.getElementById('selectedCountDisplay');
+      if (selectedIds.size > 0) {
+        bar.classList.remove('hidden');
+        countEl.textContent = selectedIds.size;
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    function updateCompanyAndLocationFilters() {
+      const compSelect = document.getElementById('companyFilter');
+      const locSelect = document.getElementById('locationFilter');
+
+      const currentComp = compSelect.value;
+      const currentLoc = locSelect.value;
+
+      const companies = new Set();
+      const locations = new Set();
+
+      cards.forEach(c => {
+        if (c.company) companies.add(c.company);
+        if (c.addresses && Array.isArray(c.addresses)) {
+          c.addresses.forEach(a => {
+            if (a) {
+              const matched = a.match(/^([\u4e00-\u9fa5]{2}[縣市])/);
+              if (matched) locations.add(matched[1]);
+              else locations.add(a.slice(0, 3));
+            }
+          });
+        }
+      });
+
+      compSelect.innerHTML = '<option value="">依公司名稱篩選...</option>';
+      Array.from(companies).sort().forEach(comp => {
+        const opt = document.createElement('option');
+        opt.value = comp;
+        opt.textContent = comp;
+        compSelect.appendChild(opt);
+      });
+      compSelect.value = companies.has(currentComp) ? currentComp : '';
+
+      locSelect.innerHTML = '<option value="">依地點/縣市篩選 (如: 台中)...</option>';
+      Array.from(locations).sort().forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc;
+        locSelect.appendChild(opt);
+      });
+      locSelect.value = locations.has(currentLoc) ? currentLoc : '';
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('cardGrid');
+      const emptyState = document.getElementById('emptyState');
+      const searchKeyword = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const filterCompany = document.getElementById('companyFilter')?.value || '';
+      const filterLocation = document.getElementById('locationFilter')?.value || '';
+
+      let filtered = cards.filter(c => {
+        if (currentTab === 'pinned' && !c.pinned) return false;
+        if (currentTab === 'favorite' && !c.favorite) return false;
+
+        if (filterCompany && c.company !== filterCompany) return false;
+        if (filterLocation) {
+          const addrs = (c.addresses || []).join(' ');
+          if (!addrs.includes(filterLocation)) return false;
+        }
+
+        if (searchKeyword) {
+          const compMatch = (c.company || '').toLowerCase().includes(searchKeyword);
+          const nameMatch = (c.name || '').toLowerCase().includes(searchKeyword);
+          const emailMatch = (c.email || '').toLowerCase().includes(searchKeyword);
+          const addrMatch = (c.addresses || []).join(' ').toLowerCase().includes(searchKeyword);
+          const tagMatch = (c.tags || []).join(' ').toLowerCase().includes(searchKeyword);
+          if (!compMatch && !nameMatch && !emailMatch && !addrMatch && !tagMatch) return false;
+        }
+
+        return true;
+      });
+
+      // 排序：置頂優先，最新在前
+      filtered.sort((a, b) => {
+        if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+
+      document.getElementById('cardCountDisplay').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        updateSelectionBar();
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = filtered.map(c => {
+        const isChecked = selectedIds.has(c.id);
+        const tagsHtml = (c.tags || []).map(t => `<span class="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-md font-medium border border-indigo-100">${t}</span>`).join('');
+        const addressesHtml = (c.addresses && c.addresses.length > 0)
+          ? c.addresses.map(a => `
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}" target="_blank" class="flex items-start gap-1.5 text-xs text-slate-600 hover:text-indigo-600 group transition">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 mt-0.5 shrink-0"></i>
+                <span class="truncate underline underline-offset-2">${a}</span>
+              </a>
+            `).join('')
+          : '<div class="text-xs text-slate-400 italic">未提供地址</div>';
+
+        return `
+          <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-3 relative group">
+            <div class="space-y-3">
+              <!-- Top bar: Checkbox, Name, Company, Action Icons -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <input type="checkbox" data-id="${c.id}" ${isChecked ? 'checked' : ''} class="card-select-checkbox rounded text-indigo-600 focus:ring-0 w-4 h-4 cursor-pointer">
+                  <div class="min-w-0">
+                    <h3 class="font-bold text-slate-900 text-sm sm:text-base truncate">${c.name || '未命名聯絡人'}</h3>
+                    <p class="text-xs font-medium text-slate-500 truncate">${c.company || '無公司資訊'}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" data-action="toggle-pin" data-id="${c.id}" class="p-1 rounded-lg hover:bg-slate-100 ${c.pinned ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'}" title="${c.pinned ? '取消置頂' : '置頂名片'}">
+                    <i data-lucide="pin" class="w-4 h-4 ${c.pinned ? 'fill-amber-500' : ''}"></i>
+                  </button>
+                  <button type="button" data-action="toggle-fav" data-id="${c.id}" class="p-1 rounded-lg hover:bg-slate-100 ${c.favorite ? 'text-rose-500' : 'text-slate-300 hover:text-slate-500'}" title="${c.favorite ? '取消最愛' : '加入最愛'}">
+                    <i data-lucide="heart" class="w-4 h-4 ${c.favorite ? 'fill-rose-500' : ''}"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Card Image Preview (if present) -->
+              ${c.frontImage ? `
+                <div class="w-full h-32 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                  <img src="${c.frontImage}" alt="${c.name || '名片'}" class="w-full h-full object-cover">
+                </div>
+              ` : ''}
+
+              <!-- Contact & Addresses -->
+              <div class="space-y-1.5 pt-1">
+                ${c.email ? `
+                  <a href="mailto:${c.email}" class="flex items-center gap-1.5 text-xs text-slate-600 hover:text-indigo-600 truncate transition">
+                    <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                    <span class="truncate underline underline-offset-2">${c.email}</span>
+                  </a>
+                ` : '<div class="text-xs text-slate-400 italic">未提供 Email</div>'}
+                <div class="space-y-1 pt-0.5">
+                  ${addressesHtml}
+                </div>
+              </div>
+
+              <!-- Tags & Memo -->
+              ${tagsHtml ? `<div class="flex flex-wrap gap-1 pt-1">${tagsHtml}</div>` : ''}
+              ${c.memo ? `
+                <div class="p-2 bg-slate-50 rounded-xl text-[11px] text-slate-600 border border-slate-100 line-clamp-2">
+                  <span class="font-semibold text-slate-700">備註：</span>${c.memo}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Footer: Actions -->
+            <div class="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs">
+              <span class="text-[11px] text-slate-400">${new Date(c.createdAt || Date.now()).toLocaleDateString('zh-TW')}</span>
+              <div class="flex items-center gap-1">
+                <button type="button" data-action="edit" data-id="${c.id}" class="px-2.5 py-1 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg font-medium transition flex items-center gap-1">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  <span>編輯</span>
+                </button>
+                <button type="button" data-action="delete" data-id="${c.id}" class="px-2 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="刪除名片">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateSelectionBar();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
     function loadCards() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY_PREFIX + currentAccount);
@@ -516,7 +656,7 @@
       updateCompanyAndLocationFilters();
     }
 
-    // 最佳化影像壓縮：鎖定 1280px / 0.82，體積小（<100KB）且文字極度銳利
+    // 高品質名片縮圖：長邊 1280px，體積僅 ~100KB，傳輸只需 0.1 秒，字體極度清晰
     async function compressImageFile(file, maxDimension = 1280, quality = 0.82) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -552,246 +692,35 @@
       });
     }
 
-    async function requestBackendOcr(base64Image) {
-      const directKey = (localStorage.getItem(DIRECT_KEY_STORAGE) || '').trim();
-      const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-
-      const promptText = `請從名片圖片中精準提取下列資訊並只輸出 JSON：
-{
-  "company": "公司或機構名稱",
-  "name": "聯絡人姓名 (不含職稱)",
-  "addresses": ["公司地址或地點，可多個"],
-  "email": "電子信箱"
-}
-若無該資訊填空字串 "" 或 []，請直接輸出標準 JSON。`;
-
-      // 1. 直連模式（秒速 1.5 秒，100% 避開 Vercel 逾時）
-      if (directKey) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(directKey)}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': directKey
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-                { text: promptText }
-              ]
-            }],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: 'application/json'
-            }
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-          text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-          return JSON.parse(text);
-        } else {
-          const errText = await res.text();
-          throw new Error(`Google 直連拒絕: ${errText}`);
-        }
-      }
-
-      // 2. Vercel 後端模式（設置 15 秒保護超時）
+    // 全自動後端辨識：使用者 100% 免輸入任何 Key，直接透過後端代理完成
+    async function requestOcr(base64Image) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 秒超時保護
 
       try {
         const response = await fetch('/api/ocr', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify({ image: base64Image }),
           signal: controller.signal
         });
+
         clearTimeout(timeoutId);
 
-        const responseData = await response.json().catch(() => ({}));
         if (!response.ok) {
-          const detail = responseData.details || responseData.error || `HTTP ${response.status}`;
-          throw new Error(detail);
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || `伺服器回應錯誤 (${response.status})`);
         }
-        return responseData;
+
+        return await response.json();
       } catch (err) {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-          throw new Error('伺服器連線逾時 (15秒)！強烈建議點擊上方「連線檢測」開啟直連模式，立即恢復秒速辨識！');
+          throw new Error('辨識請求超時，請檢查網路連線後再試一次！');
         }
         throw err;
-      }
-    }
-
-    function renderCards() {
-      const cardGrid = document.getElementById('cardGrid');
-      const emptyState = document.getElementById('emptyState');
-      const cardCountDisplay = document.getElementById('cardCountDisplay');
-      const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
-      const companyVal = document.getElementById('companyFilter').value;
-      const locationVal = document.getElementById('locationFilter').value;
-
-      cardGrid.innerHTML = '';
-
-      let filtered = cards.filter(card => {
-        if (currentTab === 'pinned' && !card.pinned) return false;
-        if (currentTab === 'favorite' && !card.favorite) return false;
-
-        if (companyVal && card.company !== companyVal) return false;
-        if (locationVal) {
-          const hasLoc = (card.addresses || []).some(addr => addr.includes(locationVal));
-          if (!hasLoc) return false;
-        }
-
-        if (searchVal) {
-          const matchComp = (card.company || '').toLowerCase().includes(searchVal);
-          const matchName = (card.name || '').toLowerCase().includes(searchVal);
-          const matchEmail = (card.email || '').toLowerCase().includes(searchVal);
-          const matchAddr = (card.addresses || []).some(a => a.toLowerCase().includes(searchVal));
-          const matchTags = (card.tags || []).some(t => t.toLowerCase().includes(searchVal));
-          if (!matchComp && !matchName && !matchEmail && !matchAddr && !matchTags) return false;
-        }
-        return true;
-      });
-
-      filtered.sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return (b.createdAt || 0) - (a.createdAt || 0);
-      });
-
-      cardCountDisplay.textContent = filtered.length;
-
-      if (filtered.length === 0) {
-        emptyState.classList.remove('hidden');
-        updateSelectionBar();
-        return;
-      }
-      emptyState.classList.add('hidden');
-
-      filtered.forEach(card => {
-        const isSelected = selectedIds.has(card.id);
-        const cardEl = document.createElement('div');
-        cardEl.className = `relative bg-white rounded-2xl p-4 border transition-all duration-200 shadow-xs hover:shadow-md flex flex-col justify-between ${
-          isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20' : 'border-slate-200 hover:border-slate-300'
-        }`;
-
-        const addressesHtml = (card.addresses && card.addresses.length > 0)
-          ? card.addresses.map(addr => `
-              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener noreferrer" class="flex items-start gap-1 text-[11px] text-slate-600 hover:text-indigo-600 hover:underline">
-                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5"></i>
-                <span class="break-all">${addr}</span>
-              </a>
-            `).join('')
-          : '<span class="text-[11px] text-slate-400">未提供地點</span>';
-
-        cardEl.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-              <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" data-id="${card.id}" class="card-select-checkbox w-4 h-4 rounded text-indigo-600 focus:ring-0" ${isSelected ? 'checked' : ''}>
-                <span class="text-xs font-semibold text-slate-600 truncate max-w-[150px]">${card.company || '未命名公司'}</span>
-              </label>
-              <div class="flex items-center gap-1 text-slate-400">
-                <button data-action="toggle-pin" data-id="${card.id}" class="p-1 hover:text-indigo-600 transition ${card.pinned ? 'text-indigo-600 font-bold' : ''}" title="${card.pinned ? '取消置頂' : '置頂'}">
-                  <i data-lucide="pin" class="w-3.5 h-3.5"></i>
-                </button>
-                <button data-action="toggle-fav" data-id="${card.id}" class="p-1 hover:text-rose-500 transition ${card.favorite ? 'text-rose-500 fill-rose-500' : ''}" title="${card.favorite ? '取消最愛' : '加入最愛'}">
-                  <i data-lucide="heart" class="w-3.5 h-3.5"></i>
-                </button>
-              </div>
-            </div>
-
-            <div class="py-3 flex gap-3 items-start">
-              ${card.frontImage ? `
-                <img src="${card.frontImage}" class="w-16 h-16 rounded-xl object-cover border border-slate-100 shrink-0 cursor-pointer shadow-2xs" data-action="preview-img" data-id="${card.id}">
-              ` : `
-                <div class="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300 shrink-0">
-                  <i data-lucide="user" class="w-6 h-6"></i>
-                </div>
-              `}
-              <div class="min-w-0 space-y-1 flex-1">
-                <h4 class="font-bold text-slate-900 text-sm truncate">${card.name || '無聯絡人姓名'}</h4>
-                ${card.email ? `
-                  <a href="mailto:${card.email}" class="text-[11px] text-rose-600 hover:underline flex items-center gap-1 truncate">
-                    <i data-lucide="mail" class="w-3 h-3 shrink-0"></i>
-                    <span class="truncate">${card.email}</span>
-                  </a>
-                ` : `
-                  <span class="text-[11px] text-slate-400 block">無電子信箱</span>
-                `}
-                <div class="space-y-0.5 pt-0.5">
-                  ${addressesHtml}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-            <span class="text-[10px] font-mono">${new Date(card.createdAt || Date.now()).toLocaleDateString('zh-TW')}</span>
-            <div class="flex items-center gap-2">
-              <button data-action="edit" data-id="${card.id}" class="text-slate-500 hover:text-indigo-600 font-medium">編輯</button>
-              <button data-action="delete" data-id="${card.id}" class="text-slate-400 hover:text-rose-600">刪除</button>
-            </div>
-          </div>
-        `;
-
-        cardGrid.appendChild(cardEl);
-      });
-
-      if (window.lucide) window.lucide.createIcons();
-      updateSelectionBar();
-    }
-
-    function updateCompanyAndLocationFilters() {
-      const compSelect = document.getElementById('companyFilter');
-      const locSelect = document.getElementById('locationFilter');
-
-      const companies = new Set();
-      const locations = new Set();
-
-      cards.forEach(c => {
-        if (c.company) companies.add(c.company.trim());
-        (c.addresses || []).forEach(a => {
-          const match = a.match(/([\u4e00-\u9fa5]{2}[縣市])/);
-          if (match) locations.add(match[1]);
-        });
-      });
-
-      const currComp = compSelect.value;
-      const currLoc = locSelect.value;
-
-      compSelect.innerHTML = '<option value="">依公司名稱篩選...</option>';
-      companies.forEach(comp => {
-        const opt = document.createElement('option');
-        opt.value = comp;
-        opt.textContent = comp;
-        compSelect.appendChild(opt);
-      });
-      compSelect.value = currComp;
-
-      locSelect.innerHTML = '<option value="">依地點/縣市篩選 (如: 台中)...</option>';
-      locations.forEach(loc => {
-        const opt = document.createElement('option');
-        opt.value = loc;
-        opt.textContent = loc;
-        locSelect.appendChild(opt);
-      });
-      locSelect.value = currLoc;
-    }
-
-    function updateSelectionBar() {
-      const bar = document.getElementById('selectionBar');
-      const countEl = document.getElementById('selectedCountDisplay');
-      if (selectedIds.size > 0) {
-        bar.classList.remove('hidden');
-        countEl.textContent = selectedIds.size;
-      } else {
-        bar.classList.add('hidden');
       }
     }
 
@@ -835,6 +764,7 @@
       document.getElementById('currentAccountDisplay').textContent = `帳號：${currentAccount}`;
       loadCards();
 
+      // Account Switcher
       const switchAccountBtn = document.getElementById('switchAccountBtn');
       const accountModal = document.getElementById('accountModal');
       const closeAccountModalBtn = document.getElementById('closeAccountModalBtn');
@@ -954,6 +884,7 @@
         }
       });
 
+      // Card Modal Add/Edit
       const cardModal = document.getElementById('cardModal');
       const openAddModalBtn = document.getElementById('openAddModalBtn');
       const closeCardModalBtn = document.getElementById('closeCardModalBtn');
@@ -972,7 +903,6 @@
       });
       closeCardModalBtn.addEventListener('click', () => cardModal.classList.add('hidden'));
       cancelCardModalBtn.addEventListener('click', () => cardModal.classList.add('hidden'));
-
       addAddressFieldBtn.addEventListener('click', () => addAddressField(''));
 
       frontImgBox.addEventListener('click', (e) => {
@@ -993,7 +923,7 @@
         const file = e.target.files[0];
         if (!file) return;
         try {
-          const compressed = await compressImageFile(file, 1280, 0.82);
+          const compressed = await compressImageFile(file, 1600, 0.88);
           frontImgPreview.src = compressed;
           frontImgPreview.classList.remove('hidden');
           frontImgPlaceholder.classList.add('hidden');
@@ -1012,11 +942,11 @@
 
         const originalText = singleAiOcrBtn.innerHTML;
         singleAiOcrBtn.disabled = true;
-        singleAiOcrBtn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>辨識中...</span>';
+        singleAiOcrBtn.innerHTML = '<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>AI 辨識中...</span>';
         if (window.lucide) window.lucide.createIcons();
 
         try {
-          const res = await requestBackendOcr(imageSrc);
+          const res = await requestOcr(imageSrc);
           if (res.company) document.getElementById('formCompany').value = res.company;
           if (res.name) document.getElementById('formName').value = res.name;
           if (res.email) document.getElementById('formEmail').value = res.email;
@@ -1104,14 +1034,14 @@
         batchItemsList.innerHTML = '';
         batchProgressWrapper.classList.remove('hidden');
 
-        // Stage 1: Fast Client-side Compression
+        // Stage 1: Client Compression
         for (let i = 0; i < files.length; i++) {
-          batchProgressText.textContent = `壓縮圖片中 (${i + 1}/${files.length})...`;
+          batchProgressText.textContent = `載入圖片中 (${i + 1}/${files.length})...`;
           batchProgressBar.style.width = `${Math.round(((i + 1) / files.length) * 35)}%`;
           batchProgressCount.textContent = `${i + 1} / ${files.length}`;
 
           try {
-            const base64 = await compressImageFile(files[i], 1280, 0.82);
+            const base64 = await compressImageFile(files[i], 1600, 0.88);
             const item = {
               id: 'batch_' + Date.now() + '_' + i,
               image: base64,
@@ -1125,22 +1055,22 @@
 
             const row = document.createElement('div');
             row.id = `batchRow_${item.id}`;
-            row.className = 'flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs';
+            row.className = 'flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs';
             row.innerHTML = `
-              <img src="${base64}" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0">
-              <input type="text" placeholder="公司名稱" class="batch-comp w-1/4 px-2 py-1 bg-white border border-slate-200 rounded-lg">
-              <input type="text" placeholder="姓名" class="batch-name w-1/5 px-2 py-1 bg-white border border-slate-200 rounded-lg">
-              <input type="text" placeholder="地址" class="batch-addr w-1/4 px-2 py-1 bg-white border border-slate-200 rounded-lg">
-              <input type="text" placeholder="Email" class="batch-email flex-1 px-2 py-1 bg-white border border-slate-200 rounded-lg">
-              <div class="batch-status shrink-0 text-slate-400 font-medium">排隊中</div>
+              <img src="${base64}" class="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0">
+              <input type="text" placeholder="公司名稱" class="batch-comp w-1/4 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
+              <input type="text" placeholder="姓名" class="batch-name w-1/5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
+              <input type="text" placeholder="地址" class="batch-addr w-1/4 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
+              <input type="text" placeholder="Email" class="batch-email flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl">
+              <div class="batch-status shrink-0 text-slate-400 font-medium px-1">排隊中</div>
             `;
             batchItemsList.appendChild(row);
           } catch (err) {
-            console.error('圖片壓縮異常:', err);
+            console.error('圖片處理異常:', err);
           }
         }
 
-        // Stage 2: Fast Sequential Recognition
+        // Stage 2: 逐張呼叫後端秒速辨識
         for (let i = 0; i < batchQueue.length; i++) {
           const item = batchQueue[i];
           const row = document.getElementById(`batchRow_${item.id}`);
@@ -1153,7 +1083,7 @@
           if (statusEl) statusEl.innerHTML = '<span class="text-indigo-600 font-bold">辨識中...</span>';
 
           try {
-            const ocr = await requestBackendOcr(item.image);
+            const ocr = await requestOcr(item.image);
             item.company = ocr.company || '';
             item.name = ocr.name || '';
             item.addresses = ocr.addresses || [];
@@ -1178,7 +1108,7 @@
               statusEl.innerHTML = `<button type="button" class="text-rose-500 font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" onclick="window.showErrorModal('${cleanErr}')">未辨出 ⓘ</button>`;
             }
           }
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         }
 
         batchProgressText.textContent = '辨識完畢！';
@@ -1341,53 +1271,7 @@
         showToast('Excel 名片清單匯出成功！', 'success');
       });
 
-      // Diagnostics & Backup Mode
-      const diagnosticsBtn = document.getElementById('diagnosticsBtn');
-      const diagnosticsModal = document.getElementById('diagnosticsModal');
-      const closeDiagnosticsBtn = document.getElementById('closeDiagnosticsBtn');
-      const testConnectionBtn = document.getElementById('testConnectionBtn');
-      const saveDirectKeyBtn = document.getElementById('saveDirectKeyBtn');
-      const directGeminiKeyInput = document.getElementById('directGeminiKeyInput');
-      const diagServerStatus = document.getElementById('diagServerStatus');
-
-      diagnosticsBtn.addEventListener('click', async () => {
-        directGeminiKeyInput.value = localStorage.getItem(DIRECT_KEY_STORAGE) || '';
-        diagnosticsModal.classList.remove('hidden');
-        diagServerStatus.textContent = '連線測試中...';
-        try {
-          const res = await fetch('/api/ocr');
-          const data = await res.json();
-          diagServerStatus.innerHTML = `<span class="text-emerald-600 font-bold">✓ 後端正常</span> (Key: ${data.apiKeyPrefix || '已讀取'})`;
-        } catch (e) {
-          diagServerStatus.innerHTML = `<span class="text-rose-500 font-bold">✗ 連線失敗</span>: ${e.message}`;
-        }
-      });
-
-      closeDiagnosticsBtn.addEventListener('click', () => diagnosticsModal.classList.add('hidden'));
-
-      testConnectionBtn.addEventListener('click', async () => {
-        diagServerStatus.textContent = '測試中...';
-        try {
-          const res = await fetch('/api/ocr');
-          const data = await res.json();
-          diagServerStatus.innerHTML = `<span class="text-emerald-600 font-bold">✓ 後端正常</span> (Key: ${data.apiKeyPrefix || '已讀取'})`;
-        } catch (e) {
-          diagServerStatus.innerHTML = `<span class="text-rose-500 font-bold">✗ 連線失敗</span>: ${e.message}`;
-        }
-      });
-
-      saveDirectKeyBtn.addEventListener('click', () => {
-        const val = directGeminiKeyInput.value.trim();
-        if (val) {
-          localStorage.setItem(DIRECT_KEY_STORAGE, val);
-          showToast('已啟用「直連 Google 模式」！速度提升 5 倍', 'success');
-        } else {
-          localStorage.removeItem(DIRECT_KEY_STORAGE);
-          showToast('已還原為「Vercel 後端模式」', 'info');
-        }
-        diagnosticsModal.classList.add('hidden');
-      });
-
+      // Error Inspector Modal
       const errorInspectorModal = document.getElementById('errorInspectorModal');
       document.getElementById('closeErrorInspectorBtn').addEventListener('click', () => errorInspectorModal.classList.add('hidden'));
       document.getElementById('confirmErrorInspectorBtn').addEventListener('click', () => errorInspectorModal.classList.add('hidden'));
