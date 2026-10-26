@@ -40,15 +40,15 @@ export default async function handler(req, res) {
     }
     const base64Data = image.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
 
-    const promptText = `請以專業 OCR 角度精確辨識此名片，提取以下四項資訊並以 JSON 回傳：
-1. company: 公司全名（繁體中文優先）
-2. name: 聯絡人姓名（不含職稱）
-3. addresses: 公司地址陣列（包含分公司或營運據點，若無則為空陣列 []）
-4. email: 電子信箱（需為合法 Email 格式，若無則為空字串 ""）
+    const promptText = `請以專業 OCR 繁體中文名片辨識角度，精確擷取圖片中名片的以下 4 項核心資訊，並嚴格以 JSON 格式回傳：
+{
+  "company": "公司完整全名（繁體中文優先，包含科技/股份有限公司等）",
+  "name": "聯絡人中文姓名（不包含職稱與稱謂）",
+  "addresses": ["公司地址或分公司據點清單，若有多個請全數列入陣列，若無則為空陣列 []"],
+  "email": "電子信箱（合法 Email 格式，若無則為空字串 \\"\\"）"
+}
+注意：只回傳純 JSON，不要附加任何解釋性開頭或結尾文字。嚴格根據名片字樣辨識，絕不自行捏造。`;
 
-嚴禁虛構未出現的資訊。`;
-
-    // 建立請求酬載，採用 thinkingBudget: 0 關閉多餘思考，極限拉升辨識速度
     const payload = {
       contents: [
         {
@@ -67,31 +67,15 @@ export default async function handler(req, res) {
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 600,
-        responseMimeType: "application/json",
-        thinkingConfig: {
-          thinkingBudget: 0
-        },
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            company: { type: "STRING" },
-            name: { type: "STRING" },
-            addresses: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            },
-            email: { type: "STRING" }
-          },
-          required: ["company", "name", "addresses", "email"]
-        }
+        maxOutputTokens: 800,
+        responseMimeType: "application/json"
       }
     };
 
-    // 依序嘗試：主力旗艦 gemini-2.5-flash，若遇異常秒級退回 gemini-2.0-flash
+    // Google 官方在線活躍模型（首選 3.8-flash，備選 3.5-flash）
     const candidateModels = [
-      'gemini-2.5-flash',
-      'gemini-2.0-flash'
+      'gemini-3.8-flash',
+      'gemini-3.5-flash'
     ];
 
     let lastError = null;
@@ -102,7 +86,8 @@ export default async function handler(req, res) {
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
           },
           body: JSON.stringify(payload)
         });
@@ -118,22 +103,27 @@ export default async function handler(req, res) {
           }
 
           const rawContent = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!rawContent) continue;
+          if (!rawContent) {
+            lastError = `Google API 回傳無文字內容: ${resText}`;
+            continue;
+          }
 
-          let resultObj;
+          let resultObj = null;
           try {
             const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
             resultObj = JSON.parse(cleanJson);
-          } catch (parseErr) {
+          } catch (pErr) {
             const match = rawContent.match(/\{[\s\S]*\}/);
             if (match) {
               resultObj = JSON.parse(match[0]);
-            } else {
-              continue;
             }
           }
 
-          return res.status(200).json(resultObj);
+          if (resultObj) {
+            return res.status(200).json(resultObj);
+          } else {
+            lastError = `無法解析 JSON 格式: ${rawContent}`;
+          }
         } else {
           lastError = `Google API [${model}] 錯誤 (${response.status}): ${resText}`;
           console.warn(lastError);
