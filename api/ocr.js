@@ -48,6 +48,7 @@ export default async function handler(req, res) {
 
 嚴禁虛構未出現的資訊。`;
 
+    // 建立請求酬載，採用 thinkingBudget: 0 關閉多餘思考，極限拉升辨識速度
     const payload = {
       contents: [
         {
@@ -68,6 +69,9 @@ export default async function handler(req, res) {
         temperature: 0.1,
         maxOutputTokens: 600,
         responseMimeType: "application/json",
+        thinkingConfig: {
+          thinkingBudget: 0
+        },
         responseSchema: {
           type: "OBJECT",
           properties: {
@@ -84,56 +88,65 @@ export default async function handler(req, res) {
       }
     };
 
-    // 使用官方正式且反應最快的低延遲多模態端點 gemini-2.0-flash
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // 依序嘗試：主力旗艦 gemini-2.5-flash，若遇異常秒級退回 gemini-2.0-flash
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-2.0-flash'
+    ];
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    let lastError = null;
 
-    const resText = await response.text();
+    for (const model of candidateModels) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
 
-    if (!response.ok) {
-      console.error(`Google API 錯誤 [${response.status}]:`, resText);
-      return res.status(response.status).json({
-        error: `Google API 回傳錯誤 (${response.status})`,
-        details: resText
-      });
-    }
+        const resText = await response.text();
 
-    let resData;
-    try {
-      resData = JSON.parse(resText);
-    } catch (e) {
-      return res.status(500).json({ error: 'Google API 回傳格式錯誤', details: resText });
-    }
+        if (response.ok) {
+          let resData;
+          try {
+            resData = JSON.parse(resText);
+          } catch (e) {
+            continue;
+          }
 
-    const rawContent = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawContent) {
-      return res.status(500).json({
-        error: '未能取得辨識內容',
-        details: JSON.stringify(resData)
-      });
-    }
+          const rawContent = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawContent) continue;
 
-    let resultObj;
-    try {
-      const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
-      resultObj = JSON.parse(cleanJson);
-    } catch (parseErr) {
-      const match = rawContent.match(/\{[\s\S]*\}/);
-      if (match) {
-        resultObj = JSON.parse(match[0]);
-      } else {
-        throw new Error(`無法解析回傳內容: ${rawContent}`);
+          let resultObj;
+          try {
+            const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+            resultObj = JSON.parse(cleanJson);
+          } catch (parseErr) {
+            const match = rawContent.match(/\{[\s\S]*\}/);
+            if (match) {
+              resultObj = JSON.parse(match[0]);
+            } else {
+              continue;
+            }
+          }
+
+          return res.status(200).json(resultObj);
+        } else {
+          lastError = `Google API [${model}] 錯誤 (${response.status}): ${resText}`;
+          console.warn(lastError);
+        }
+      } catch (err) {
+        lastError = err.message;
       }
     }
 
-    return res.status(200).json(resultObj);
+    return res.status(500).json({
+      error: '名片辨識處理失敗',
+      details: lastError
+    });
 
   } catch (error) {
     console.error('OCR 處理異常:', error);
