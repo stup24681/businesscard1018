@@ -340,6 +340,24 @@
       </div>
 
       <div class="p-6 space-y-4">
+        
+        <!-- 指定發信信箱 (新增功能) -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">發信用 Gmail 帳號 (寄件者身分)</label>
+            <span class="text-[11px] text-slate-400">登入多個帳號時自動指定</span>
+          </div>
+          <div class="relative">
+            <i data-lucide="at-sign" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+              type="email" 
+              id="senderEmailInput" 
+              placeholder="例如：mybiz@gmail.com (選填，留空則以瀏覽器目前預設帳號寄出)"
+              class="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs sm:text-sm"
+            >
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">群發發送方式</label>
           <div class="grid grid-cols-2 gap-3">
@@ -974,7 +992,13 @@
         alert('目前名單中沒有有效的 Email 地址！');
         return;
       }
+      
+      // 自動帶入上次記住的發信信箱身分
+      const savedSender = localStorage.getItem('cardvault_sender_email') || '';
+      document.getElementById('senderEmailInput').value = savedSender;
+
       document.getElementById('emailModal').classList.remove('hidden');
+      lucide.createIcons();
     }
 
     function closeEmailModal() {
@@ -998,15 +1022,26 @@
       const targets = isSelectMode && selectedIds.size > 0 ? cards.filter(c => selectedIds.has(c.id)) : cards;
       const validRecipients = targets.filter(c => c.email && c.email.includes('@'));
 
+      // 取得使用者指定的寄件信箱並儲存偏好
+      const senderEmail = document.getElementById('senderEmailInput').value.trim();
+      if (senderEmail) {
+        localStorage.setItem('cardvault_sender_email', senderEmail);
+      }
+
+      // 建立 Gmail 基本 URL，若有指定寄件信箱則帶入 authuser 參數精準辨識身分
+      const baseUrl = senderEmail 
+        ? `https://mail.google.com/mail/?authuser=${encodeURIComponent(senderEmail)}&view=cm&fs=1`
+        : `https://mail.google.com/mail/?view=cm&fs=1`;
+
       if (emailSendMode === 'bcc') {
         const bccList = validRecipients.map(c => c.email).join(',');
-        const url = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bccList)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyTemplate.replace(/{name}/g, '').replace(/{company}/g, ''))}`;
+        const url = `${baseUrl}&bcc=${encodeURIComponent(bccList)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyTemplate.replace(/{name}/g, '').replace(/{company}/g, ''))}`;
         window.open(url, '_blank');
       } else {
         validRecipients.forEach((c, idx) => {
           setTimeout(() => {
             const body = bodyTemplate.replace(/{name}/g, c.name || '').replace(/{company}/g, c.company || '');
-            const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            const url = `${baseUrl}&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             window.open(url, '_blank');
           }, idx * 300);
         });
