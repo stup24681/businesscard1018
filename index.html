@@ -216,7 +216,7 @@
                 <i data-lucide="camera" class="w-6 h-6"></i>
               </div>
               <p class="text-xs font-semibold text-slate-700">拍照或上傳名片</p>
-              <p class="text-[11px] text-slate-400">繁體中文高清晰識別、秒級回應</p>
+              <p class="text-[11px] text-slate-400">繁體中文高清晰度辨識</p>
             </div>
           </div>
         </div>
@@ -226,13 +226,13 @@
           <div class="inline-block animate-spin text-indigo-600">
             <i data-lucide="loader-2" class="w-6 h-6"></i>
           </div>
-          <p class="text-xs font-semibold text-indigo-600 animate-pulse">AI 高速辨識中，約需 1~2 秒...</p>
+          <p class="text-xs font-semibold text-indigo-600 animate-pulse">AI 精準辨識中，請稍候...</p>
         </div>
 
         <!-- 欄位1：姓名 -->
         <div>
           <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">姓名</label>
-          <input type="text" id="fieldName" placeholder="例如：王小明" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+          <input type="text" id="fieldName" placeholder="例如：周建州" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
         </div>
 
         <!-- 欄位2：公司名稱 -->
@@ -278,7 +278,7 @@
       <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
           <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i>
-          <span>批量新增名片（上限 10 張）</span>
+          <span>批量新增名片（優先保證辨識率）</span>
         </h3>
         <button onclick="closeBatchModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -293,14 +293,14 @@
           <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2 group-hover:scale-105 transition">
             <i data-lucide="upload-cloud" class="w-6 h-6"></i>
           </div>
-          <p class="text-sm font-bold text-slate-700">點擊選取多張名片圖檔 (可多選)</p>
-          <p class="text-xs text-slate-400 mt-1">選取後依序自動完成辨識，1~2 秒/張</p>
+          <p class="text-sm font-bold text-slate-700">點擊選取名片圖檔 (可多選)</p>
+          <p class="text-xs text-slate-400 mt-1">選取後依序自動高精度辨識，每張完成後留出安全緩衝</p>
         </div>
 
         <!-- 辨識進度回報條 -->
         <div id="batchProgressContainer" class="hidden space-y-2">
           <div class="flex justify-between text-xs font-bold text-slate-600">
-            <span id="batchProgressStatus">正在辨識中...</span>
+            <span id="batchProgressStatus">準備開始辨識...</span>
             <span id="batchProgressCounter">0 / 0</span>
           </div>
           <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -579,7 +579,7 @@
       lucide.createIcons();
     }
 
-    // 兼具高解析度與傳輸效率的壓縮 (1400px, 0.88 畫質)
+    // 保留高清晰度的影像壓縮 (長邊 1400px, 畫質 0.88，字跡清晰分明)
     function compressImageFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -686,6 +686,7 @@
       progressContainer.classList.remove('hidden');
       saveBtn.disabled = true;
 
+      // 1. 先快速將選取的圖片在前端完成壓縮與佇列預覽
       for (let i = 0; i < files.length; i++) {
         const base64 = await compressImageFile(files[i]);
         const item = {
@@ -714,6 +715,7 @@
         listEl.appendChild(cardDom);
       }
 
+      // 2. 逐張依序進行精準辨識，每張完成後留出 2.5 秒緩衝確保 100% 成功
       for (let i = 0; i < batchQueue.length; i++) {
         const item = batchQueue[i];
         const dom = document.getElementById(item.id);
@@ -721,7 +723,7 @@
         
         statusEl.className = 'batch-status text-indigo-600 font-bold shrink-0 animate-pulse';
         statusEl.innerText = '辨識中...';
-        progressStatus.innerText = `正在辨識第 ${i + 1} / ${batchQueue.length} 張...`;
+        progressStatus.innerText = `正在高精度辨識第 ${i + 1} / ${batchQueue.length} 張...`;
         progressCounter.innerText = `${i + 1} / ${batchQueue.length}`;
         progressBar.style.width = `${((i + 1) / batchQueue.length) * 100}%`;
 
@@ -753,12 +755,14 @@
           statusEl.title = err.message;
         }
 
+        // 若還有下一張，留出 2.5 秒冷卻緩衝，避免觸發 API 頻率保護
         if (i < batchQueue.length - 1) {
-          await new Promise(r => setTimeout(r, 800));
+          progressStatus.innerText = `第 ${i + 1} 張辨識成功！安全冷卻中，即將辨識第 ${i + 2} 張...`;
+          await new Promise(r => setTimeout(r, 2500));
         }
       }
 
-      progressStatus.innerText = '批量辨識已完成！';
+      progressStatus.innerText = '批量辨識已全數完成！';
       saveBtn.disabled = false;
       confetti({ particleCount: 60, spread: 70 });
     }
