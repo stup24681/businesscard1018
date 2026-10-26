@@ -40,15 +40,16 @@ export default async function handler(req, res) {
     }
     const base64Data = image.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
 
-    const promptText = `請以專業 OCR 繁體中文名片辨識角度，精確擷取圖片中名片的以下 4 項核心資訊，並嚴格以 JSON 格式回傳：
+    const promptText = `你是一個極度精準的繁體中文商業名片 OCR 專家。請仔細分析這張名片圖片，精確擷取以下 4 個核心欄位，並嚴格只回傳 JSON 格式：
 {
-  "company": "公司完整全名（繁體中文優先，包含科技/股份有限公司等）",
-  "name": "聯絡人中文姓名（不包含職稱與稱謂）",
-  "addresses": ["公司地址或分公司據點清單，若有多個請全數列入陣列，若無則為空陣列 []"],
-  "email": "電子信箱（合法 Email 格式，若無則為空字串 \\"\\"）"
+  "company": "公司完整官方全名（包含股份有限公司、科技有限公司、企業社等，繁體中文優先）",
+  "name": "聯絡人中文姓名（不要包含經理、處長、業務等職稱或稱謂）",
+  "addresses": ["公司地址或分公司/據點清單，包含縣市區路門牌樓層。若有多個據點請列入陣列，若無則為空陣列 []"],
+  "email": "正確的電子信箱（包含 @ 與 domain，若無則為空字串 \"\"）"
 }
-注意：只回傳純 JSON，不要附加任何解釋性開頭或結尾文字。嚴格根據名片字樣辨識，絕不自行捏造。`;
+注意：只輸出合法的純 JSON，絕不包含多餘的對話或說明文字。若名片上未出現該資訊請留空，絕不自行捏造。`;
 
+    // 依據 Google 官方最新規範：移除已廢棄的 temperature 參數，保留純淨的 application/json 回傳
     const payload = {
       contents: [
         {
@@ -66,16 +67,14 @@ export default async function handler(req, res) {
         }
       ],
       generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 800,
         responseMimeType: "application/json"
       }
     };
 
-    // Google 官方在線活躍模型（首選 3.8-flash，備選 3.5-flash）
+    // 官方活躍端點隊列：首選結構化數據提取與低延遲的 3.5-flash-lite，備選 3.8-flash
     const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash'
     ];
 
     let lastError = null;
@@ -104,7 +103,7 @@ export default async function handler(req, res) {
 
           const rawContent = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (!rawContent) {
-            lastError = `Google API 回傳無文字內容: ${resText}`;
+            lastError = `API 未回傳有效文字: ${resText}`;
             continue;
           }
 
@@ -122,7 +121,7 @@ export default async function handler(req, res) {
           if (resultObj) {
             return res.status(200).json(resultObj);
           } else {
-            lastError = `無法解析 JSON 格式: ${rawContent}`;
+            lastError = `無法解析 JSON 內容: ${rawContent}`;
           }
         } else {
           lastError = `Google API [${model}] 錯誤 (${response.status}): ${resText}`;
