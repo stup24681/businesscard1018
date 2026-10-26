@@ -3,7 +3,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS 設定
+  // CORS 跨域設定
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
