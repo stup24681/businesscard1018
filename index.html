@@ -109,7 +109,7 @@
     </div>
   </header>
 
-  <!-- ==================== 主主要內容區 ==================== -->
+  <!-- ==================== 主要內容區 ==================== -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
 
     <!-- 搜尋與篩選操作列 -->
@@ -127,7 +127,7 @@
         >
       </div>
 
-      <!-- 快捷工具群：Excel匯出、群發郵件、選取模式 -->
+      <!-- 快捷工具群：Excel 匯出、群發郵件、選取模式 -->
       <div class="flex items-center space-x-2 overflow-x-auto pb-1 md:pb-0">
         <button onclick="exportToExcel()" class="flex items-center space-x-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0">
           <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
@@ -216,7 +216,7 @@
                 <i data-lucide="camera" class="w-6 h-6"></i>
               </div>
               <p class="text-xs font-semibold text-slate-700">拍照或上傳名片</p>
-              <p class="text-[11px] text-slate-400">支援繁體中文、全自動 AI 辨識四大資訊</p>
+              <p class="text-[11px] text-slate-400">繁體中文高清晰識別、秒級回應</p>
             </div>
           </div>
         </div>
@@ -226,7 +226,7 @@
           <div class="inline-block animate-spin text-indigo-600">
             <i data-lucide="loader-2" class="w-6 h-6"></i>
           </div>
-          <p class="text-xs font-semibold text-indigo-600 animate-pulse">Gemini 智慧解析中，約需 1.5 秒...</p>
+          <p class="text-xs font-semibold text-indigo-600 animate-pulse">AI 高速辨識中，約需 1~2 秒...</p>
         </div>
 
         <!-- 欄位1：姓名 -->
@@ -294,7 +294,7 @@
             <i data-lucide="upload-cloud" class="w-6 h-6"></i>
           </div>
           <p class="text-sm font-bold text-slate-700">點擊選取多張名片圖檔 (可多選)</p>
-          <p class="text-xs text-slate-400 mt-1">選取後系統將自動開始辨識，原汁原味超快速度</p>
+          <p class="text-xs text-slate-400 mt-1">選取後依序自動完成辨識，1~2 秒/張</p>
         </div>
 
         <!-- 辨識進度回報條 -->
@@ -386,7 +386,7 @@
         <i data-lucide="alert-triangle" class="w-6 h-6"></i>
       </div>
       <div>
-        <h4 class="text-base font-bold text-slate-800">辨識異常回報</h4>
+        <h4 class="text-base font-bold text-slate-800">辨識狀態回報</h4>
         <div id="errorMessageContent" class="mt-2 text-xs font-mono text-rose-600 bg-rose-50 p-3 rounded-xl max-h-40 overflow-y-auto whitespace-pre-wrap"></div>
       </div>
       <div class="flex justify-end">
@@ -395,9 +395,8 @@
     </div>
   </div>
 
-  <!-- ==================== 全域 JavaScript 邏輯 ==================== -->
+  <!-- ==================== 前端邏輯 ==================== -->
   <script>
-    // 1. 使用者管理系統 (各自保留資料於 LocalStorage)
     const APP_USERS_KEY = 'cardvault_users_list';
     const APP_CURRENT_USER_KEY = 'cardvault_current_user';
     let usersList = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '["預設帳號"]');
@@ -415,14 +414,12 @@
     let batchQueue = [];
     let emailSendMode = 'bcc';
 
-    // 初始化載入
     document.addEventListener('DOMContentLoaded', () => {
       refreshUserUI();
       loadCards();
       lucide.createIcons();
     });
 
-    // 使用者系統操作
     function refreshUserUI() {
       document.getElementById('currentUserName').innerText = currentUser;
       const container = document.getElementById('userListContainer');
@@ -440,11 +437,10 @@
       menu.classList.toggle('hidden');
     }
 
-    // 點擊外部關閉選單
     window.addEventListener('click', (e) => {
       const btn = document.getElementById('userDropdownBtn');
       const menu = document.getElementById('userMenuDropdown');
-      if (!btn.contains(e.target) && !menu.contains(e.target)) {
+      if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
         menu.classList.add('hidden');
       }
     });
@@ -472,7 +468,6 @@
       switchUser(trimmed);
     }
 
-    // 匯出名片 JSON
     function exportCurrentUserData() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cards, null, 2));
       const downloadAnchor = document.createElement('a');
@@ -483,7 +478,6 @@
       downloadAnchor.remove();
     }
 
-    // 匯入名片 JSON
     function importUserData(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -507,7 +501,6 @@
       event.target.value = '';
     }
 
-    // 載入當前使用者的名片
     function loadCards() {
       const raw = localStorage.getItem(getStorageKey());
       cards = raw ? JSON.parse(raw) : [];
@@ -518,7 +511,6 @@
       localStorage.setItem(getStorageKey(), JSON.stringify(cards));
     }
 
-    // 渲染名片
     function renderCards(list = cards) {
       const grid = document.getElementById('cardsGrid');
       const emptyState = document.getElementById('emptyState');
@@ -548,7 +540,6 @@
               </div>
             ` : ''}
 
-            <!-- 頂部資訊 -->
             <div class="flex items-start justify-between">
               <div>
                 <span class="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 mb-1.5">${c.company || '未知公司'}</span>
@@ -566,7 +557,6 @@
               ` : ''}
             </div>
 
-            <!-- Email 點擊直發 -->
             ${c.email ? `
               <div class="flex items-center space-x-1.5 text-xs">
                 <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i>
@@ -576,7 +566,6 @@
               </div>
             ` : ''}
 
-            <!-- 地址與導航 -->
             ${addressesHtml ? `
               <div class="space-y-1 pt-1 border-t border-slate-100">
                 ${addressesHtml}
@@ -590,7 +579,7 @@
       lucide.createIcons();
     }
 
-    // 影像壓縮函式 (1280px / 0.85 兼顧極速與清晰度)
+    // 兼具高解析度與傳輸效率的壓縮 (1400px, 0.88 畫質)
     function compressImageFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -600,7 +589,7 @@
           img.src = e.target.result;
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_DIM = 1280;
+            const MAX_DIM = 1400;
             let w = img.width;
             let h = img.height;
             if (w > MAX_DIM || h > MAX_DIM) {
@@ -616,7 +605,7 @@
             canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', 0.85));
+            resolve(canvas.toDataURL('image/jpeg', 0.88));
           };
           img.onerror = reject;
         };
@@ -624,7 +613,6 @@
       });
     }
 
-    // 單張名片圖片選取與即時 OCR
     async function handleSingleImageSelect(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -634,8 +622,6 @@
         document.getElementById('imagePlaceholder').classList.add('hidden');
         document.getElementById('imagePreviewContainer').classList.remove('hidden');
         document.getElementById('imagePreview').src = singleBase64;
-        
-        // 自動執行 AI 辨識
         await runSingleOCR(singleBase64);
       } catch (err) {
         showError('圖片載入失敗: ' + err.message);
@@ -663,7 +649,6 @@
           throw new Error(data.error || data.details || `HTTP ${res.status}`);
         }
         
-        // 填入欄位
         document.getElementById('fieldName').value = data.name || '';
         document.getElementById('fieldCompany').value = data.company || '';
         document.getElementById('fieldEmail').value = data.email || '';
@@ -676,7 +661,7 @@
           addAddressField('');
         }
 
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+        confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
       } catch (err) {
         showError(err.message);
       } finally {
@@ -684,7 +669,6 @@
       }
     }
 
-    // 批量新增選取處理 (平滑流水線，避開超時與限額)
     async function handleBatchSelect(e) {
       const files = Array.from(e.target.files).slice(0, 10);
       if (files.length === 0) return;
@@ -702,7 +686,6 @@
       progressContainer.classList.remove('hidden');
       saveBtn.disabled = true;
 
-      // 1. 預載並建立 DOM
       for (let i = 0; i < files.length; i++) {
         const base64 = await compressImageFile(files[i]);
         const item = {
@@ -712,7 +695,7 @@
           company: '',
           email: '',
           addresses: [],
-          status: 'pending' // pending, running, success, fail
+          status: 'pending'
         };
         batchQueue.push(item);
 
@@ -731,7 +714,6 @@
         listEl.appendChild(cardDom);
       }
 
-      // 2. 順序執行辨識 (每張 1.5 秒高速回傳，間隔 1.2 秒徹底避開限速)
       for (let i = 0; i < batchQueue.length; i++) {
         const item = batchQueue[i];
         const dom = document.getElementById(item.id);
@@ -771,20 +753,17 @@
           statusEl.title = err.message;
         }
 
-        // 安全間隔 1.2 秒
         if (i < batchQueue.length - 1) {
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 800));
         }
       }
 
       progressStatus.innerText = '批量辨識已完成！';
       saveBtn.disabled = false;
-      confetti({ particleCount: 80, spread: 80 });
+      confetti({ particleCount: 60, spread: 70 });
     }
 
-    // 儲存批量名片
     function saveBatchCards() {
-      const listEl = document.getElementById('batchList');
       batchQueue.forEach(item => {
         const dom = document.getElementById(item.id);
         const comp = dom.querySelector('.batch-comp').value;
@@ -807,7 +786,6 @@
       closeBatchModal();
     }
 
-    // 單張編輯與新增 Modal 邏輯
     function openAddCardModal() {
       currentEditingId = null;
       singleBase64 = null;
@@ -907,7 +885,6 @@
       }
     }
 
-    // 模態框開關
     function openBatchModal() {
       document.getElementById('batchList').innerHTML = '';
       document.getElementById('batchProgressContainer').classList.add('hidden');
@@ -919,7 +896,6 @@
       document.getElementById('batchModal').classList.add('hidden');
     }
 
-    // 搜尋功能
     function handleSearch() {
       const q = document.getElementById('searchInput').value.trim().toLowerCase();
       if (!q) {
@@ -935,7 +911,6 @@
       renderCards(filtered);
     }
 
-    // 多選模式
     function toggleSelectMode() {
       isSelectMode = !isSelectMode;
       selectedIds.clear();
@@ -971,7 +946,6 @@
       }
     }
 
-    // Excel 匯出
     function exportToExcel() {
       if (cards.length === 0) {
         alert('名片夾目前沒有資料可供匯出');
@@ -989,7 +963,6 @@
       XLSX.writeFile(wb, `名片清單_${currentUser}.xlsx`);
     }
 
-    // Gmail 發信系統
     function openEmailComposer(onlySelected = false) {
       const targets = onlySelected ? cards.filter(c => selectedIds.has(c.id)) : cards;
       const emails = targets.map(c => c.email).filter(e => e && e.includes('@'));
