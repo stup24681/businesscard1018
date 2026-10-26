@@ -1,145 +1,1047 @@
-export const config = {
-  maxDuration: 60,
-};
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CardVault Pro - 智慧名片夾</title>
+  
+  <!-- 核心函式庫: Tailwind CSS, Lucide Icons, SheetJS, CanvasConfetti -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-export default async function handler(req, res) {
-  // CORS 設定
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (req.method === 'GET') {
-    return res.status(200).json({ status: 'ok', hasApiKey: !!apiKey });
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: '僅支援 POST 請求' });
-  }
-
-  if (!apiKey) {
-    return res.status(500).json({ error: '伺服器未設定 GEMINI_API_KEY，請至 Vercel 後台 Environment Variables 設定' });
-  }
-
-  const { image } = req.body || {};
-  if (!image) {
-    return res.status(400).json({ error: '未接收到名片圖片資料 (image 為空)' });
-  }
-
-  try {
-    let mimeType = 'image/jpeg';
-    const mimeMatch = image.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,/);
-    if (mimeMatch) {
-      mimeType = mimeMatch[1];
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
-    const base64Data = image.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '').trim();
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(241, 245, 249, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-    const promptText = `請以專業 OCR 角度精確辨識此名片，提取以下四項資訊並以 JSON 回傳：
-1. company: 公司全名（繁體中文優先）
-2. name: 聯絡人姓名（不含職稱）
-3. addresses: 公司地址陣列（包含分公司或營運據點，若無則為空陣列 []）
-4. email: 電子信箱（需為合法 Email 格式，若無則為空字串 ""）
+  <!-- ==================== 頂部導覽列 ==================== -->
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- LOGO 品牌 -->
+      <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-800 bg-clip-text text-transparent leading-none">
+            CardVault <span class="text-xs px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-semibold border border-indigo-200/60 ml-1">Pro</span>
+          </h1>
+          <p class="text-[11px] text-slate-400 mt-0.5 font-medium">智慧數位名片夾</p>
+        </div>
+      </div>
 
-嚴禁虛構未出現的資訊。`;
+      <!-- 右側：使用者切換與資料保留按鈕群 -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        
+        <!-- 使用者資料管理選單 -->
+        <div class="relative">
+          <button id="userDropdownBtn" onclick="toggleUserMenu()" class="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition shadow-xs">
+            <i data-lucide="user-check" class="w-4 h-4 text-indigo-600"></i>
+            <span id="currentUserName" class="max-w-[100px] truncate">預設帳號</span>
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+          </button>
 
-    const payload = {
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Data
+          <!-- 使用者切換下拉清單 -->
+          <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/80 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div class="px-4 py-2 border-b border-slate-100">
+              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">切換使用者（各自保留資料）</p>
+            </div>
+            
+            <div id="userListContainer" class="max-h-40 overflow-y-auto custom-scrollbar py-1">
+              <!-- 動態渲染使用者清單 -->
+            </div>
+
+            <div class="p-2 border-t border-slate-100 space-y-1">
+              <button onclick="promptNewUser()" class="w-full flex items-center space-x-2 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                <span>新增使用者</span>
+              </button>
+              <button onclick="exportCurrentUserData()" class="w-full flex items-center space-x-2 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>匯出目前名片備份 (JSON)</span>
+              </button>
+              <button onclick="document.getElementById('importFileInput').click()" class="w-full flex items-center space-x-2 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                <span>匯入/合併名片備份</span>
+              </button>
+              <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importUserData(event)">
+            </div>
+          </div>
+        </div>
+
+        <!-- 批量新增按鈕 -->
+        <button onclick="openBatchModal()" class="flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-indigo-100 transition active:scale-95">
+          <i data-lucide="copy-plus" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">批量辨識</span>
+          <span class="sm:hidden">批量</span>
+        </button>
+
+        <!-- 單張新增按鈕 -->
+        <button onclick="openAddCardModal()" class="flex items-center space-x-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-slate-200 transition active:scale-95">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">新增名片</span>
+          <span class="sm:hidden">新增</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 主主要內容區 ==================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+    <!-- 搜尋與篩選操作列 -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      
+      <!-- 關鍵字搜尋框 -->
+      <div class="relative flex-1">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="搜尋姓名、公司名稱、地址、Email..." 
+          oninput="handleSearch()"
+          class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition"
+        >
+      </div>
+
+      <!-- 快捷工具群：Excel匯出、群發郵件、選取模式 -->
+      <div class="flex items-center space-x-2 overflow-x-auto pb-1 md:pb-0">
+        <button onclick="exportToExcel()" class="flex items-center space-x-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span>匯出 Excel</span>
+        </button>
+
+        <button onclick="openEmailComposer()" class="flex items-center space-x-1.5 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/60 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0">
+          <i data-lucide="mail" class="w-4 h-4"></i>
+          <span>Gmail 群發</span>
+        </button>
+
+        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+        <button id="batchSelectModeBtn" onclick="toggleSelectMode()" class="flex items-center space-x-1.5 px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0">
+          <i data-lucide="check-square" class="w-4 h-4"></i>
+          <span id="selectModeText">多選模式</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 多選批次操作工具列 (預設隱藏) -->
+    <div id="selectionActionBar" class="hidden bg-indigo-900 text-white rounded-2xl px-5 py-3.5 shadow-lg flex items-center justify-between animate-in fade-in duration-150">
+      <div class="flex items-center space-x-3 text-sm">
+        <span class="font-bold bg-indigo-700 px-2.5 py-0.5 rounded-full text-xs" id="selectedCountBadge">已選 0 張</span>
+        <button onclick="selectAllCards(true)" class="text-xs text-indigo-200 hover:text-white underline">全選</button>
+        <button onclick="selectAllCards(false)" class="text-xs text-indigo-200 hover:text-white underline">取消全選</button>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="openEmailComposer(true)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold transition">寄給選中者</button>
+        <button onclick="deleteSelectedCards()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-lg text-xs font-semibold transition">刪除選中</button>
+      </div>
+    </div>
+
+    <!-- 名片清單展示卡片格 -->
+    <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- 動態載入名片 -->
+    </div>
+
+    <!-- 空狀態提示 -->
+    <div id="emptyState" class="hidden py-20 flex flex-col items-center justify-center text-center">
+      <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-400 mb-4">
+        <i data-lucide="contact-2" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-700">目前卡夾內尚無名片</h3>
+      <p class="text-xs text-slate-400 mt-1 max-w-sm">點擊右上角「批量辨識」或「新增名片」，拍照或上傳名片即可自動辨識！</p>
+      <button onclick="openAddCardModal()" class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition">
+        立即新增第一張
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ==================== 模態框：單張新增/編輯名片 ==================== -->
+  <div id="cardModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="modalTitle" class="text-base font-bold text-slate-800 flex items-center space-x-2">
+          <i data-lucide="credit-card" class="w-5 h-5 text-indigo-600"></i>
+          <span>新增名片</span>
+        </h3>
+        <button onclick="closeCardModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        
+        <!-- 名片照片上傳/預覽區 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">名片圖片與 AI 辨識</label>
+          <div class="relative border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 transition bg-slate-50/50 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
+            <input type="file" id="cardImageInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="handleSingleImageSelect(event)">
+            
+            <div id="imagePreviewContainer" class="hidden w-full relative">
+              <img id="imagePreview" src="" alt="名片預覽" class="max-h-48 w-full object-contain rounded-xl shadow-xs">
+              <button type="button" onclick="triggerSingleAI(event)" id="reOcrBtn" class="mt-2.5 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 flex items-center justify-center space-x-1.5 z-20 relative">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>重新 AI 辨識此名片</span>
+              </button>
+            </div>
+
+            <div id="imagePlaceholder" class="py-4 space-y-2">
+              <div class="w-12 h-12 mx-auto rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                <i data-lucide="camera" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs font-semibold text-slate-700">拍照或上傳名片</p>
+              <p class="text-[11px] text-slate-400">支援繁體中文、全自動 AI 辨識四大資訊</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 辨識中進度條 -->
+        <div id="singleOcrLoading" class="hidden py-3 text-center space-y-2">
+          <div class="inline-block animate-spin text-indigo-600">
+            <i data-lucide="loader-2" class="w-6 h-6"></i>
+          </div>
+          <p class="text-xs font-semibold text-indigo-600 animate-pulse">Gemini 智慧解析中，約需 1.5 秒...</p>
+        </div>
+
+        <!-- 欄位1：姓名 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">姓名</label>
+          <input type="text" id="fieldName" placeholder="例如：王小明" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+        </div>
+
+        <!-- 欄位2：公司名稱 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">公司名稱</label>
+          <input type="text" id="fieldCompany" placeholder="例如：巨興醫學科技股份有限公司" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+        </div>
+
+        <!-- 欄位3：Email -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">電子信箱 (Email)</label>
+          <input type="email" id="fieldEmail" placeholder="service@example.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+        </div>
+
+        <!-- 欄位4：地址清單（支援多據點） -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">公司地址 (可增設分公司據點)</label>
+            <button type="button" onclick="addAddressField()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-0.5">
+              <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+              <span>新增據點</span>
+            </button>
+          </div>
+          <div id="addressesContainer" class="space-y-2">
+            <!-- 動態加入地址輸入列 -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-3">
+        <button type="button" onclick="closeCardModal()" class="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-semibold">取消</button>
+        <button type="button" onclick="saveCard()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition">儲存名片</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 模態框：批量名片 AI 辨識 ==================== -->
+  <div id="batchModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+          <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i>
+          <span>批量新增名片（上限 10 張）</span>
+        </h3>
+        <button onclick="closeBatchModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        
+        <!-- 上傳多圖觸發區 -->
+        <div class="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-6 text-center bg-slate-50/50 cursor-pointer relative group">
+          <input type="file" id="batchImageInput" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="handleBatchSelect(event)">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2 group-hover:scale-105 transition">
+            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+          </div>
+          <p class="text-sm font-bold text-slate-700">點擊選取多張名片圖檔 (可多選)</p>
+          <p class="text-xs text-slate-400 mt-1">選取後系統將自動開始辨識，原汁原味超快速度</p>
+        </div>
+
+        <!-- 辨識進度回報條 -->
+        <div id="batchProgressContainer" class="hidden space-y-2">
+          <div class="flex justify-between text-xs font-bold text-slate-600">
+            <span id="batchProgressStatus">正在辨識中...</span>
+            <span id="batchProgressCounter">0 / 0</span>
+          </div>
+          <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div id="batchProgressBar" class="bg-indigo-600 h-full w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- 批量辨識名單列表 -->
+        <div id="batchList" class="space-y-3">
+          <!-- 動態卡片佇列 -->
+        </div>
+
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <button onclick="closeBatchModal()" class="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-semibold">取消</button>
+        <button onclick="saveBatchCards()" id="batchSaveAllBtn" disabled class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition">
+          一鍵全數存入卡夾
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 模態框：Gmail 群發郵件撰寫 ==================== -->
+  <div id="emailModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+          <i data-lucide="mail" class="w-5 h-5 text-indigo-600"></i>
+          <span>Gmail 客製化 / 密件群發</span>
+        </h3>
+        <button onclick="closeEmailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">群發發送方式</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="sendModeBcc" onclick="setEmailSendMode('bcc')" class="px-4 py-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center space-x-1.5">
+              <i data-lucide="users" class="w-4 h-4"></i>
+              <span>密件副本 (BCC)</span>
+            </button>
+            <button type="button" id="sendModeSingle" onclick="setEmailSendMode('single')" class="px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 text-xs font-bold flex items-center justify-center space-x-1.5">
+              <i data-lucide="user" class="w-4 h-4"></i>
+              <span>個別專屬信件</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">主旨</label>
+          <input type="text" id="emailSubject" placeholder="請輸入信件主旨..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">信件內容</label>
+            <span class="text-[11px] text-slate-400">可用變數：{name} {company}</span>
+          </div>
+          <textarea id="emailBody" rows="5" placeholder="您好 {name}，很高興能在日前交流..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm custom-scrollbar"></textarea>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-3">
+        <button onclick="closeEmailModal()" class="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-semibold">取消</button>
+        <button onclick="sendEmails()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition flex items-center space-x-1.5">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>開啟 Gmail 發送</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 模態框：異常通報彈窗 ==================== -->
+  <div id="errorModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h4 class="text-base font-bold text-slate-800">辨識異常回報</h4>
+        <div id="errorMessageContent" class="mt-2 text-xs font-mono text-rose-600 bg-rose-50 p-3 rounded-xl max-h-40 overflow-y-auto whitespace-pre-wrap"></div>
+      </div>
+      <div class="flex justify-end">
+        <button onclick="document.getElementById('errorModal').classList.add('hidden')" class="px-5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold">我知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 全域 JavaScript 邏輯 ==================== -->
+  <script>
+    // 1. 使用者管理系統 (各自保留資料於 LocalStorage)
+    const APP_USERS_KEY = 'cardvault_users_list';
+    const APP_CURRENT_USER_KEY = 'cardvault_current_user';
+    let usersList = JSON.parse(localStorage.getItem(APP_USERS_KEY) || '["預設帳號"]');
+    let currentUser = localStorage.getItem(APP_CURRENT_USER_KEY) || usersList[0];
+
+    function getStorageKey() {
+      return `cardvault_cards_${currentUser}`;
+    }
+
+    let cards = [];
+    let selectedIds = new Set();
+    let isSelectMode = false;
+    let currentEditingId = null;
+    let singleBase64 = null;
+    let batchQueue = [];
+    let emailSendMode = 'bcc';
+
+    // 初始化載入
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshUserUI();
+      loadCards();
+      lucide.createIcons();
+    });
+
+    // 使用者系統操作
+    function refreshUserUI() {
+      document.getElementById('currentUserName').innerText = currentUser;
+      const container = document.getElementById('userListContainer');
+      container.innerHTML = usersList.map(u => `
+        <div class="flex items-center justify-between px-3 py-2 hover:bg-slate-50 cursor-pointer rounded-lg mx-1 ${u === currentUser ? 'bg-indigo-50 font-bold text-indigo-700' : 'text-slate-600'}" onclick="switchUser('${u}')">
+          <span class="text-xs truncate">${u}</span>
+          ${u === currentUser ? '<i data-lucide="check" class="w-3.5 h-3.5 text-indigo-600"></i>' : ''}
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function toggleUserMenu() {
+      const menu = document.getElementById('userMenuDropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    // 點擊外部關閉選單
+    window.addEventListener('click', (e) => {
+      const btn = document.getElementById('userDropdownBtn');
+      const menu = document.getElementById('userMenuDropdown');
+      if (!btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    function switchUser(userName) {
+      if (userName === currentUser) {
+        document.getElementById('userMenuDropdown').classList.add('hidden');
+        return;
+      }
+      currentUser = userName;
+      localStorage.setItem(APP_CURRENT_USER_KEY, currentUser);
+      document.getElementById('userMenuDropdown').classList.add('hidden');
+      refreshUserUI();
+      loadCards();
+    }
+
+    function promptNewUser() {
+      const name = window.prompt('請輸入新使用者名稱（將建立獨立名片庫）：');
+      if (!name || !name.trim()) return;
+      const trimmed = name.trim();
+      if (!usersList.includes(trimmed)) {
+        usersList.push(trimmed);
+        localStorage.setItem(APP_USERS_KEY, JSON.stringify(usersList));
+      }
+      switchUser(trimmed);
+    }
+
+    // 匯出名片 JSON
+    function exportCurrentUserData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cards, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cardvault_${currentUser}_backup.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // 匯入名片 JSON
+    function importUserData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            cards = [...cards, ...imported];
+            saveCardsToStorage();
+            renderCards();
+            window.alert(`成功匯入 ${imported.length} 筆名片！`);
+          } else {
+            window.alert('檔案格式錯誤，需為名片陣列');
+          }
+        } catch (err) {
+          window.alert('無法解析檔案');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // 載入當前使用者的名片
+    function loadCards() {
+      const raw = localStorage.getItem(getStorageKey());
+      cards = raw ? JSON.parse(raw) : [];
+      renderCards();
+    }
+
+    function saveCardsToStorage() {
+      localStorage.setItem(getStorageKey(), JSON.stringify(cards));
+    }
+
+    // 渲染名片
+    function renderCards(list = cards) {
+      const grid = document.getElementById('cardsGrid');
+      const emptyState = document.getElementById('emptyState');
+
+      if (!list || list.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = list.map(c => {
+        const isSelected = selectedIds.has(c.id);
+        const addressesHtml = (c.addresses || []).map(addr => `
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1 text-slate-500 hover:text-indigo-600 text-xs transition">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-500 shrink-0"></i>
+            <span class="hover:underline">${addr}</span>
+          </a>
+        `).join('<br>');
+
+        return `
+          <div class="relative bg-white rounded-2xl p-5 border ${isSelected ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200/80'} shadow-xs hover:shadow-md transition space-y-3.5 group">
+            
+            ${isSelectMode ? `
+              <div class="absolute top-4 right-4 z-10">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCardSelect('${c.id}')" class="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+              </div>
+            ` : ''}
+
+            <!-- 頂部資訊 -->
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 mb-1.5">${c.company || '未知公司'}</span>
+                <h3 class="text-base font-bold text-slate-800">${c.name || '未署名'}</h3>
+              </div>
+              ${!isSelectMode ? `
+                <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition">
+                  <button onclick="editCard('${c.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-50 transition" title="編輯">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                  </button>
+                  <button onclick="deleteCard('${c.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition" title="刪除">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Email 點擊直發 -->
+            ${c.email ? `
+              <div class="flex items-center space-x-1.5 text-xs">
+                <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i>
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}" target="_blank" rel="noopener noreferrer" class="text-slate-600 hover:text-indigo-600 font-medium hover:underline">
+                  ${c.email}
+                </a>
+              </div>
+            ` : ''}
+
+            <!-- 地址與導航 -->
+            ${addressesHtml ? `
+              <div class="space-y-1 pt-1 border-t border-slate-100">
+                ${addressesHtml}
+              </div>
+            ` : ''}
+
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // 影像壓縮函式 (1280px / 0.85 兼顧極速與清晰度)
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 1280;
+            let w = img.width;
+            let h = img.height;
+            if (w > MAX_DIM || h > MAX_DIM) {
+              if (w > h) {
+                h = Math.round((h * MAX_DIM) / w);
+                w = MAX_DIM;
+              } else {
+                w = Math.round((w * MAX_DIM) / h);
+                h = MAX_DIM;
               }
-            },
-            {
-              text: promptText
             }
-          ]
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+        };
+        reader.onerror = reject;
+      });
+    }
+
+    // 單張名片圖片選取與即時 OCR
+    async function handleSingleImageSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        singleBase64 = await compressImageFile(file);
+        document.getElementById('imagePlaceholder').classList.add('hidden');
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+        document.getElementById('imagePreview').src = singleBase64;
+        
+        // 自動執行 AI 辨識
+        await runSingleOCR(singleBase64);
+      } catch (err) {
+        showError('圖片載入失敗: ' + err.message);
+      }
+    }
+
+    async function triggerSingleAI(e) {
+      e.stopPropagation();
+      if (singleBase64) {
+        await runSingleOCR(singleBase64);
+      }
+    }
+
+    async function runSingleOCR(base64) {
+      const loading = document.getElementById('singleOcrLoading');
+      loading.classList.remove('hidden');
+      try {
+        const res = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64 })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || data.details || `HTTP ${res.status}`);
         }
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 600,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            company: { type: "STRING" },
-            name: { type: "STRING" },
-            addresses: {
-              type: "ARRAY",
-              items: { type: "STRING" }
-            },
-            email: { type: "STRING" }
-          },
-          required: ["company", "name", "addresses", "email"]
+        
+        // 填入欄位
+        document.getElementById('fieldName').value = data.name || '';
+        document.getElementById('fieldCompany').value = data.company || '';
+        document.getElementById('fieldEmail').value = data.email || '';
+        
+        const addrContainer = document.getElementById('addressesContainer');
+        addrContainer.innerHTML = '';
+        if (data.addresses && Array.isArray(data.addresses) && data.addresses.length > 0) {
+          data.addresses.forEach(a => addAddressField(a));
+        } else {
+          addAddressField('');
+        }
+
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        loading.classList.add('hidden');
+      }
+    }
+
+    // 批量新增選取處理 (平滑流水線，避開超時與限額)
+    async function handleBatchSelect(e) {
+      const files = Array.from(e.target.files).slice(0, 10);
+      if (files.length === 0) return;
+
+      batchQueue = [];
+      const listEl = document.getElementById('batchList');
+      listEl.innerHTML = '';
+      
+      const progressContainer = document.getElementById('batchProgressContainer');
+      const progressBar = document.getElementById('batchProgressBar');
+      const progressStatus = document.getElementById('batchProgressStatus');
+      const progressCounter = document.getElementById('batchProgressCounter');
+      const saveBtn = document.getElementById('batchSaveAllBtn');
+
+      progressContainer.classList.remove('hidden');
+      saveBtn.disabled = true;
+
+      // 1. 預載並建立 DOM
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await compressImageFile(files[i]);
+        const item = {
+          id: 'batch_' + Date.now() + '_' + i,
+          base64: base64,
+          name: '',
+          company: '',
+          email: '',
+          addresses: [],
+          status: 'pending' // pending, running, success, fail
+        };
+        batchQueue.push(item);
+
+        const cardDom = document.createElement('div');
+        cardDom.id = item.id;
+        cardDom.className = 'flex items-center space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs';
+        cardDom.innerHTML = `
+          <img src="${base64}" class="w-12 h-8 object-cover rounded-md shadow-xs">
+          <div class="flex-1 grid grid-cols-3 gap-2">
+            <input type="text" placeholder="公司名稱" class="batch-comp px-2 py-1 bg-white border border-slate-200 rounded-lg">
+            <input type="text" placeholder="姓名" class="batch-name px-2 py-1 bg-white border border-slate-200 rounded-lg">
+            <input type="text" placeholder="Email" class="batch-email px-2 py-1 bg-white border border-slate-200 rounded-lg">
+          </div>
+          <div class="batch-status text-slate-400 font-bold shrink-0">排隊中</div>
+        `;
+        listEl.appendChild(cardDom);
+      }
+
+      // 2. 順序執行辨識 (每張 1.5 秒高速回傳，間隔 1.2 秒徹底避開限速)
+      for (let i = 0; i < batchQueue.length; i++) {
+        const item = batchQueue[i];
+        const dom = document.getElementById(item.id);
+        const statusEl = dom.querySelector('.batch-status');
+        
+        statusEl.className = 'batch-status text-indigo-600 font-bold shrink-0 animate-pulse';
+        statusEl.innerText = '辨識中...';
+        progressStatus.innerText = `正在辨識第 ${i + 1} / ${batchQueue.length} 張...`;
+        progressCounter.innerText = `${i + 1} / ${batchQueue.length}`;
+        progressBar.style.width = `${((i + 1) / batchQueue.length) * 100}%`;
+
+        try {
+          const res = await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: item.base64 })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || data.details || `HTTP ${res.status}`);
+
+          item.company = data.company || '';
+          item.name = data.name || '';
+          item.email = data.email || '';
+          item.addresses = data.addresses || [];
+          item.status = 'success';
+
+          dom.querySelector('.batch-comp').value = item.company;
+          dom.querySelector('.batch-name').value = item.name;
+          dom.querySelector('.batch-email').value = item.email;
+          
+          statusEl.className = 'batch-status text-emerald-600 font-bold shrink-0';
+          statusEl.innerText = '✓ 完成';
+        } catch (err) {
+          item.status = 'fail';
+          statusEl.className = 'batch-status text-rose-500 font-bold shrink-0 cursor-pointer';
+          statusEl.innerText = '辨識失敗';
+          statusEl.title = err.message;
+        }
+
+        // 安全間隔 1.2 秒
+        if (i < batchQueue.length - 1) {
+          await new Promise(r => setTimeout(r, 1200));
         }
       }
-    };
 
-    // 使用官方正式且反應最快的低延遲多模態端點 gemini-2.0-flash
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      progressStatus.innerText = '批量辨識已完成！';
+      saveBtn.disabled = false;
+      confetti({ particleCount: 80, spread: 80 });
+    }
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    // 儲存批量名片
+    function saveBatchCards() {
+      const listEl = document.getElementById('batchList');
+      batchQueue.forEach(item => {
+        const dom = document.getElementById(item.id);
+        const comp = dom.querySelector('.batch-comp').value;
+        const name = dom.querySelector('.batch-name').value;
+        const email = dom.querySelector('.batch-email').value;
 
-    const resText = await response.text();
-
-    if (!response.ok) {
-      console.error(`Google API 錯誤 [${response.status}]:`, resText);
-      return res.status(response.status).json({
-        error: `Google API 回傳錯誤 (${response.status})`,
-        details: resText
+        if (comp || name || email) {
+          cards.unshift({
+            id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            company: comp,
+            name: name,
+            email: email,
+            addresses: item.addresses || []
+          });
+        }
       });
+
+      saveCardsToStorage();
+      renderCards();
+      closeBatchModal();
     }
 
-    let resData;
-    try {
-      resData = JSON.parse(resText);
-    } catch (e) {
-      return res.status(500).json({ error: 'Google API 回傳格式錯誤', details: resText });
+    // 單張編輯與新增 Modal 邏輯
+    function openAddCardModal() {
+      currentEditingId = null;
+      singleBase64 = null;
+      document.getElementById('modalTitle').innerHTML = '<i data-lucide="credit-card" class="w-5 h-5 text-indigo-600"></i><span>新增名片</span>';
+      document.getElementById('fieldName').value = '';
+      document.getElementById('fieldCompany').value = '';
+      document.getElementById('fieldEmail').value = '';
+      document.getElementById('imagePlaceholder').classList.remove('hidden');
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+      document.getElementById('addressesContainer').innerHTML = '';
+      addAddressField('');
+      document.getElementById('cardModal').classList.remove('hidden');
+      lucide.createIcons();
     }
 
-    const rawContent = resData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawContent) {
-      return res.status(500).json({
-        error: '未能取得辨識內容',
-        details: JSON.stringify(resData)
-      });
-    }
-
-    let resultObj;
-    try {
-      const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
-      resultObj = JSON.parse(cleanJson);
-    } catch (parseErr) {
-      const match = rawContent.match(/\{[\s\S]*\}/);
-      if (match) {
-        resultObj = JSON.parse(match[0]);
+    function editCard(id) {
+      const card = cards.find(c => c.id === id);
+      if (!card) return;
+      currentEditingId = id;
+      singleBase64 = null;
+      document.getElementById('modalTitle').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-indigo-600"></i><span>編輯名片</span>';
+      document.getElementById('fieldName').value = card.name || '';
+      document.getElementById('fieldCompany').value = card.company || '';
+      document.getElementById('fieldEmail').value = card.email || '';
+      document.getElementById('imagePlaceholder').classList.remove('hidden');
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+      
+      const addrContainer = document.getElementById('addressesContainer');
+      addrContainer.innerHTML = '';
+      if (card.addresses && card.addresses.length > 0) {
+        card.addresses.forEach(a => addAddressField(a));
       } else {
-        throw new Error(`無法解析回傳內容: ${rawContent}`);
+        addAddressField('');
+      }
+
+      document.getElementById('cardModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCardModal() {
+      document.getElementById('cardModal').classList.add('hidden');
+    }
+
+    function addAddressField(value = '') {
+      const container = document.getElementById('addressesContainer');
+      const div = document.createElement('div');
+      div.className = 'flex items-center space-x-2';
+      div.innerHTML = `
+        <input type="text" value="${value}" placeholder="請輸入營業或分公司地址..." class="addr-input flex-1 px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm">
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-slate-400 hover:text-rose-500 rounded-lg">
+          <i data-lucide="minus-circle" class="w-4 h-4"></i>
+        </button>
+      `;
+      container.appendChild(div);
+      lucide.createIcons();
+    }
+
+    function saveCard() {
+      const name = document.getElementById('fieldName').value.trim();
+      const company = document.getElementById('fieldCompany').value.trim();
+      const email = document.getElementById('fieldEmail').value.trim();
+      
+      const addrs = Array.from(document.querySelectorAll('.addr-input'))
+        .map(i => i.value.trim())
+        .filter(v => v.length > 0);
+
+      if (!name && !company) {
+        window.alert('請至少填寫姓名或公司名稱');
+        return;
+      }
+
+      if (currentEditingId) {
+        const idx = cards.findIndex(c => c.id === currentEditingId);
+        if (idx !== -1) {
+          cards[idx] = { ...cards[idx], name, company, email, addresses: addrs };
+        }
+      } else {
+        cards.unshift({
+          id: 'c_' + Date.now(),
+          name,
+          company,
+          email,
+          addresses: addrs
+        });
+      }
+
+      saveCardsToStorage();
+      renderCards();
+      closeCardModal();
+    }
+
+    function deleteCard(id) {
+      if (confirm('確定要刪除此張名片嗎？')) {
+        cards = cards.filter(c => c.id !== id);
+        saveCardsToStorage();
+        renderCards();
       }
     }
 
-    return res.status(200).json(resultObj);
+    // 模態框開關
+    function openBatchModal() {
+      document.getElementById('batchList').innerHTML = '';
+      document.getElementById('batchProgressContainer').classList.add('hidden');
+      document.getElementById('batchSaveAllBtn').disabled = true;
+      document.getElementById('batchModal').classList.remove('hidden');
+    }
 
-  } catch (error) {
-    console.error('OCR 處理異常:', error);
-    return res.status(500).json({
-      error: '伺服器端辨識處理失敗',
-      details: error.message || String(error)
-    });
-  }
-}
+    function closeBatchModal() {
+      document.getElementById('batchModal').classList.add('hidden');
+    }
+
+    // 搜尋功能
+    function handleSearch() {
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      if (!q) {
+        renderCards(cards);
+        return;
+      }
+      const filtered = cards.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.company && c.company.toLowerCase().includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.addresses && c.addresses.some(a => a.toLowerCase().includes(q)))
+      );
+      renderCards(filtered);
+    }
+
+    // 多選模式
+    function toggleSelectMode() {
+      isSelectMode = !isSelectMode;
+      selectedIds.clear();
+      document.getElementById('selectModeText').innerText = isSelectMode ? '結束選取' : '多選模式';
+      document.getElementById('selectionActionBar').classList.toggle('hidden', !isSelectMode);
+      renderCards();
+    }
+
+    function toggleCardSelect(id) {
+      if (selectedIds.has(id)) selectedIds.delete(id);
+      else selectedIds.add(id);
+      document.getElementById('selectedCountBadge').innerText = `已選 ${selectedIds.size} 張`;
+      renderCards();
+    }
+
+    function selectAllCards(check) {
+      if (check) {
+        cards.forEach(c => selectedIds.add(c.id));
+      } else {
+        selectedIds.clear();
+      }
+      document.getElementById('selectedCountBadge').innerText = `已選 ${selectedIds.size} 張`;
+      renderCards();
+    }
+
+    function deleteSelectedCards() {
+      if (selectedIds.size === 0) return;
+      if (confirm(`確定要刪除選中的 ${selectedIds.size} 筆名片嗎？`)) {
+        cards = cards.filter(c => !selectedIds.has(c.id));
+        selectedIds.clear();
+        saveCardsToStorage();
+        toggleSelectMode();
+      }
+    }
+
+    // Excel 匯出
+    function exportToExcel() {
+      if (cards.length === 0) {
+        alert('名片夾目前沒有資料可供匯出');
+        return;
+      }
+      const excelRows = cards.map(c => ({
+        '公司名稱': c.company || '',
+        '姓名': c.name || '',
+        '電子信箱': c.email || '',
+        '地址': (c.addresses || []).join('; ')
+      }));
+      const ws = XLSX.utils.json_to_sheet(excelRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "名片列表");
+      XLSX.writeFile(wb, `名片清單_${currentUser}.xlsx`);
+    }
+
+    // Gmail 發信系統
+    function openEmailComposer(onlySelected = false) {
+      const targets = onlySelected ? cards.filter(c => selectedIds.has(c.id)) : cards;
+      const emails = targets.map(c => c.email).filter(e => e && e.includes('@'));
+      if (emails.length === 0) {
+        alert('目前名單中沒有有效的 Email 地址！');
+        return;
+      }
+      document.getElementById('emailModal').classList.remove('hidden');
+    }
+
+    function closeEmailModal() {
+      document.getElementById('emailModal').classList.add('hidden');
+    }
+
+    function setEmailSendMode(mode) {
+      emailSendMode = mode;
+      document.getElementById('sendModeBcc').className = mode === 'bcc'
+        ? 'px-4 py-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center space-x-1.5'
+        : 'px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 text-xs font-bold flex items-center justify-center space-x-1.5';
+      
+      document.getElementById('sendModeSingle').className = mode === 'single'
+        ? 'px-4 py-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center space-x-1.5'
+        : 'px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 text-xs font-bold flex items-center justify-center space-x-1.5';
+    }
+
+    function sendEmails() {
+      const subject = document.getElementById('emailSubject').value;
+      const bodyTemplate = document.getElementById('emailBody').value;
+      const targets = isSelectMode && selectedIds.size > 0 ? cards.filter(c => selectedIds.has(c.id)) : cards;
+      const validRecipients = targets.filter(c => c.email && c.email.includes('@'));
+
+      if (emailSendMode === 'bcc') {
+        const bccList = validRecipients.map(c => c.email).join(',');
+        const url = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bccList)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyTemplate.replace(/{name}/g, '').replace(/{company}/g, ''))}`;
+        window.open(url, '_blank');
+      } else {
+        validRecipients.forEach((c, idx) => {
+          setTimeout(() => {
+            const body = bodyTemplate.replace(/{name}/g, c.name || '').replace(/{company}/g, c.company || '');
+            const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.open(url, '_blank');
+          }, idx * 300);
+        });
+      }
+
+      closeEmailModal();
+    }
+
+    function showError(msg) {
+      document.getElementById('errorMessageContent').innerText = msg;
+      document.getElementById('errorModal').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
